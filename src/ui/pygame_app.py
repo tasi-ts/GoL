@@ -1,0 +1,531 @@
+import pygame
+
+from board import Board
+from game import GameOfLife
+from rules import Rules
+
+
+# Layout: grid on the left, side panel for stats and controls.
+PANEL_WIDTH = 480
+GRID_MARGIN_LEFT = 20
+GRID_MARGIN_TOP = 20
+GRID_PANEL_GAP = 10
+WINDOW_PAD_RIGHT = 8
+WINDOW_HEIGHT = 640
+MIN_CELL_SIZE = 4
+MAX_CELL_SIZE = 12
+DEFAULT_FPS = 15
+DEFAULT_STEPS_PER_FRAME = 1
+
+BOARD_SIZE_MIN = 16
+BOARD_SIZE_MAX = 128
+BOARD_SIZE_STEP = 8
+
+MAX_ITER_MIN = 100
+MAX_ITER_MAX = 10000
+MAX_ITER_STEP = 100
+
+RAND_RATE_MIN = 0.0
+RAND_RATE_MAX = 1.0
+RAND_RATE_STEP = 0.05
+
+BUTTON_W = 32
+BUTTON_H = 26
+BUTTON_GAP = 6
+VALUE_BUTTON_GAP = 12
+ROW_HEIGHT = 40
+CONFIG_ROW_START_Y = 108
+CONFIG_PAD = 16
+START_BUTTON_H = 36
+
+COLOR_BG = (24, 24, 28)
+COLOR_PANEL = (32, 32, 38)
+COLOR_PANEL_BORDER = (55, 55, 65)
+COLOR_DEAD = (30, 30, 36)
+COLOR_ALIVE = (0, 200, 120)
+COLOR_GRID_LINE = (42, 42, 50)
+COLOR_TEXT = (230, 230, 235)
+COLOR_TEXT_DIM = (150, 150, 160)
+COLOR_ACCENT = (0, 200, 120)
+COLOR_BUTTON = (50, 50, 58)
+COLOR_BUTTON_BORDER = (80, 80, 92)
+COLOR_BUTTON_DISABLED = (40, 40, 46)
+COLOR_START = (0, 140, 90)
+
+
+class PygameApp(object):
+
+    def __init__(
+        self,
+        board_size=64,
+        neighborhood=8,
+        max_iter=2500,
+        rand_rate=0.5,
+        fps=DEFAULT_FPS,
+    ):
+        self.board_size = board_size
+        self.neighborhood = neighborhood
+        self.max_iter = max_iter
+        self.rand_rate = rand_rate
+        self.fps = fps
+        self.steps_per_frame = DEFAULT_STEPS_PER_FRAME
+
+        self._simulation_started = False
+        self.paused = True
+        self.generation = 0
+        self.status = "Configure settings, then Start"
+        self._running = True
+        self._finished = False
+
+        self._config_buttons = []
+        self._start_button_rect = None
+
+        pygame.init()
+        self.font = pygame.font.SysFont("consolas", 16)
+        self.font_title = pygame.font.SysFont("consolas", 20, bold=True)
+        self.font_small = pygame.font.SysFont("consolas", 14)
+
+        self.game = self._make_game()
+        self._rebuild_window()
+        pygame.display.set_caption("Conway's Game of Life")
+        self.clock = pygame.time.Clock()
+
+    @property
+    def _config_editable(self):
+        return not self._simulation_started
+
+    def _make_game(self):
+        return GameOfLife(
+            init_board=Board(self.board_size),
+            rule_set=Rules(self.neighborhood, self.board_size),
+            max_iter=self.max_iter,
+            rand_rate=self.rand_rate,
+        )
+
+    def _rebuild_window(self):
+        self.cell_size = max(
+            MIN_CELL_SIZE,
+            min(MAX_CELL_SIZE, (WINDOW_HEIGHT - 40) // self.board_size),
+        )
+        grid_pixels = self.board_size * self.cell_size
+        self.window_height = max(
+            WINDOW_HEIGHT, grid_pixels + GRID_MARGIN_TOP + 20
+        )
+
+        self.grid_rect = pygame.Rect(
+            GRID_MARGIN_LEFT,
+            GRID_MARGIN_TOP,
+            grid_pixels,
+            grid_pixels,
+        )
+        self.panel_rect = pygame.Rect(
+            self.grid_rect.right + GRID_PANEL_GAP,
+            0,
+            PANEL_WIDTH,
+            self.window_height,
+        )
+        # Window must fit grid margins + gap + full panel (was clipping ~30px on the right).
+        self.window_width = self.panel_rect.right + WINDOW_PAD_RIGHT
+
+        if hasattr(self, "screen"):
+            self.screen = pygame.display.set_mode(
+                (self.window_width, self.window_height)
+            )
+        else:
+            self.screen = pygame.display.set_mode(
+                (self.window_width, self.window_height)
+            )
+        self._build_config_buttons()
+
+    def _config_row_layout(self, row_y):
+        """Label left; value before minus; minus and plus grouped on the right."""
+        x_label = self.panel_rect.x + CONFIG_PAD
+        x_plus = self.panel_rect.right - CONFIG_PAD - BUTTON_W
+        x_minus = x_plus - BUTTON_GAP - BUTTON_W
+        return x_label, x_minus, x_plus
+
+    def _build_config_buttons(self):
+        self._config_buttons = []
+        x_label = self.panel_rect.x + CONFIG_PAD
+        y = CONFIG_ROW_START_Y
+
+        rows = [
+            ("board_size", self._dec_board_size, self._inc_board_size),
+            ("neighborhood", self._dec_neighborhood, self._inc_neighborhood),
+            ("max_iter", self._dec_max_iter, self._inc_max_iter),
+            ("rand_rate", self._dec_rand_rate, self._inc_rand_rate),
+        ]
+        for key, on_dec, on_inc in rows:
+            _, x_minus, x_plus = self._config_row_layout(y)
+            minus_rect = pygame.Rect(x_minus, y, BUTTON_W, BUTTON_H)
+            plus_rect = pygame.Rect(x_plus, y, BUTTON_W, BUTTON_H)
+            self._config_buttons.append({
+                "key": key,
+                "label_x": x_label,
+                "minus": minus_rect,
+                "plus": plus_rect,
+                "on_dec": on_dec,
+                "on_inc": on_inc,
+            })
+            y += ROW_HEIGHT
+
+        start_w = self.panel_rect.width - 2 * CONFIG_PAD
+        self._start_button_rect = pygame.Rect(
+            x_label,
+            y + 8,
+            start_w,
+            START_BUTTON_H,
+        )
+
+    def _dec_board_size(self):
+        self.board_size = max(BOARD_SIZE_MIN, self.board_size - BOARD_SIZE_STEP)
+        self._apply_config_change()
+
+    def _inc_board_size(self):
+        self.board_size = min(BOARD_SIZE_MAX, self.board_size + BOARD_SIZE_STEP)
+        self._apply_config_change()
+
+    def _dec_neighborhood(self):
+        self.neighborhood = 4
+
+    def _inc_neighborhood(self):
+        self.neighborhood = 8
+
+    def _dec_max_iter(self):
+        self.max_iter = max(MAX_ITER_MIN, self.max_iter - MAX_ITER_STEP)
+
+    def _inc_max_iter(self):
+        self.max_iter = min(MAX_ITER_MAX, self.max_iter + MAX_ITER_STEP)
+
+    def _dec_rand_rate(self):
+        self.rand_rate = round(
+            max(RAND_RATE_MIN, self.rand_rate - RAND_RATE_STEP), 2
+        )
+
+    def _inc_rand_rate(self):
+        self.rand_rate = round(
+            min(RAND_RATE_MAX, self.rand_rate + RAND_RATE_STEP), 2
+        )
+
+    def _apply_config_change(self):
+        self.game = self._make_game()
+        self._rebuild_window()
+
+    def start_simulation(self):
+        if self._simulation_started:
+            return
+        self.game = self._make_game()
+        self.game.initialize_board()
+        self._simulation_started = True
+        self.generation = 0
+        self._finished = False
+        self.paused = True
+        self.status = "Paused"
+
+    def reset_to_setup(self):
+        self._simulation_started = False
+        self.generation = 0
+        self._finished = False
+        self.paused = True
+        self.status = "Configure settings, then Start"
+        self.game = self._make_game()
+
+    def reset(self):
+        """Return to setup screen (config editable again)."""
+        self.reset_to_setup()
+
+    def _handle_config_click(self, pos):
+        if not self._config_editable:
+            return
+        if self._start_button_rect.collidepoint(pos):
+            self.start_simulation()
+            return
+        for row in self._config_buttons:
+            if row["minus"].collidepoint(pos):
+                row["on_dec"]()
+                if row["key"] == "board_size":
+                    self._apply_config_change()
+                else:
+                    self.game = self._make_game()
+                return
+            if row["plus"].collidepoint(pos):
+                row["on_inc"]()
+                if row["key"] == "board_size":
+                    self._apply_config_change()
+                else:
+                    self.game = self._make_game()
+                return
+
+    def _handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self._running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                self._handle_config_click(event.pos)
+            elif event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_ESCAPE, pygame.K_q):
+                    self._running = False
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    if self._config_editable:
+                        self.start_simulation()
+                elif event.key == pygame.K_SPACE:
+                    if self._simulation_started and not self._finished:
+                        self.paused = not self.paused
+                        self.status = "Paused" if self.paused else "Running"
+                elif event.key == pygame.K_r:
+                    self.reset_to_setup()
+                elif event.key in (pygame.K_EQUALS, pygame.K_PLUS):
+                    if self._simulation_started:
+                        self.steps_per_frame = min(64, self.steps_per_frame + 1)
+                elif event.key == pygame.K_MINUS:
+                    if self._simulation_started:
+                        self.steps_per_frame = max(1, self.steps_per_frame - 1)
+                elif event.key == pygame.K_UP:
+                    self.fps = min(120, self.fps + 5)
+                elif event.key == pygame.K_DOWN:
+                    self.fps = max(1, self.fps - 5)
+                elif event.key == pygame.K_LEFT:
+                    if self._simulation_started:
+                        self._pause_for_scrub()
+                        self._step_back()
+                elif event.key == pygame.K_RIGHT:
+                    if self._simulation_started:
+                        self._pause_for_scrub()
+                        self._step_forward()
+
+    def _pause_for_scrub(self):
+        self.paused = True
+        if self._finished and self.status.startswith("Stopped"):
+            self.status = "Paused"
+
+    def _step_back(self):
+        if not self._simulation_started:
+            return
+        if self.game.step_back():
+            self.generation = max(0, self.generation - 1)
+            self._finished = False
+            self.status = "Paused"
+        else:
+            self.status = "Paused (at start)"
+
+    def _step_forward(self):
+        if not self._simulation_started:
+            return
+        if self.generation >= self.game.max_iter:
+            self.status = "Paused (max iterations reached)"
+            return
+        self._finished = False
+        if not self.game.step():
+            self._finished = True
+            self.status = "Stopped (repeating pattern)"
+        else:
+            self.generation += 1
+            if self.generation >= self.game.max_iter:
+                self._finished = True
+                self.status = "Stopped (max iterations)"
+            else:
+                self.status = "Paused"
+
+    def _simulate_steps(self):
+        if not self._simulation_started or self.paused or self._finished:
+            return
+        for _ in range(self.steps_per_frame):
+            if self.generation >= self.game.max_iter:
+                self._finished = True
+                self.status = "Stopped (max iterations)"
+                return
+            if not self.game.step():
+                self._finished = True
+                self.status = "Stopped (repeating pattern)"
+                return
+            self.generation += 1
+
+    def _draw_grid(self):
+        board = self.game.board
+        size = board.size
+        cell = self.cell_size
+        origin_x = self.grid_rect.x
+        origin_y = self.grid_rect.y
+
+        pygame.draw.rect(self.screen, COLOR_DEAD, self.grid_rect)
+        for x in range(size):
+            for y in range(size):
+                if board.array[x][y]:
+                    pygame.draw.rect(
+                        self.screen,
+                        COLOR_ALIVE,
+                        pygame.Rect(
+                            origin_x + y * cell,
+                            origin_y + x * cell,
+                            cell,
+                            cell,
+                        ),
+                    )
+
+        if cell >= 6:
+            for i in range(size + 1):
+                x_pos = origin_x + i * cell
+                y_pos = origin_y + i * cell
+                pygame.draw.line(
+                    self.screen,
+                    COLOR_GRID_LINE,
+                    (origin_x, y_pos),
+                    (origin_x + size * cell, y_pos),
+                    1,
+                )
+                pygame.draw.line(
+                    self.screen,
+                    COLOR_GRID_LINE,
+                    (x_pos, origin_y),
+                    (x_pos, origin_y + size * cell),
+                    1,
+                )
+
+        pygame.draw.rect(self.screen, COLOR_ACCENT, self.grid_rect, 2)
+
+    def _draw_button(self, rect, label, enabled=True, accent=False):
+        fill = COLOR_START if accent else (
+            COLOR_BUTTON if enabled else COLOR_BUTTON_DISABLED
+        )
+        pygame.draw.rect(self.screen, fill, rect)
+        border = COLOR_ACCENT if accent else COLOR_BUTTON_BORDER
+        pygame.draw.rect(self.screen, border, rect, 2)
+        surf = self.font_small.render(label, True, COLOR_TEXT)
+        tx = rect.x + (rect.width - surf.get_width()) // 2
+        ty = rect.y + (rect.height - surf.get_height()) // 2
+        self.screen.blit(surf, (tx, ty))
+
+    def _draw_config_panel(self):
+        x = self.panel_rect.x + CONFIG_PAD
+        y = 24
+        title = self.font_title.render("Game of Life", True, COLOR_ACCENT)
+        self.screen.blit(title, (x, y))
+        y += 32
+
+        hint = self.font_small.render(
+            "Settings (before Start only)", True, COLOR_TEXT_DIM
+        )
+        self.screen.blit(hint, (x, y))
+        y = CONFIG_ROW_START_Y
+
+        labels = {
+            "board_size": "Board size",
+            "neighborhood": "Neighborhood",
+            "max_iter": "Max generations",
+            "rand_rate": "Random rate",
+        }
+        values = {
+            "board_size": str(self.board_size),
+            "neighborhood": str(self.neighborhood),
+            "max_iter": str(self.max_iter),
+            "rand_rate": "{0:.0%}".format(self.rand_rate),
+        }
+
+        for row in self._config_buttons:
+            key = row["key"]
+            row_y = row["minus"].y
+            label_surf = self.font.render(labels[key], True, COLOR_TEXT)
+            self.screen.blit(label_surf, (row["label_x"], row_y + 5))
+            val_surf = self.font.render(values[key], True, COLOR_ACCENT)
+            val_x = row["minus"].x - VALUE_BUTTON_GAP - val_surf.get_width()
+            self.screen.blit(val_surf, (val_x, row_y + 5))
+            self._draw_button(row["minus"], "-", enabled=self._config_editable)
+            self._draw_button(row["plus"], "+", enabled=self._config_editable)
+            y = row_y + ROW_HEIGHT
+
+        if self._start_button_rect:
+            self._draw_button(
+                self._start_button_rect,
+                "Start",
+                enabled=self._config_editable,
+                accent=True,
+            )
+
+        y = self._start_button_rect.bottom + 24
+        for line in [
+            "Enter  also starts",
+            "R      new setup",
+            "Esc    quit",
+        ]:
+            surf = self.font_small.render(line, True, COLOR_TEXT_DIM)
+            self.screen.blit(surf, (x, y))
+            y += surf.get_height() + 4
+
+    def _draw_running_panel(self):
+        x = self.panel_rect.x + 16
+        y = 24
+        lines = [
+            ("Conway's Game of Life", self.font_title, COLOR_ACCENT),
+            ("", self.font, COLOR_TEXT),
+            ("Generation: {0}".format(self.generation), self.font, COLOR_TEXT),
+            ("Population: {0}".format(self.game.board.area), self.font, COLOR_TEXT),
+            ("Status: {0}".format(self.status), self.font, COLOR_TEXT),
+            ("Board: {0}  Neighbor: {1}".format(
+                self.board_size, self.neighborhood
+            ), self.font, COLOR_TEXT_DIM),
+            ("Max gen: {0}  Seed: {1:.0%}".format(
+                self.max_iter, self.rand_rate
+            ), self.font, COLOR_TEXT_DIM),
+            ("Speed: {0} step(s)/frame".format(self.steps_per_frame), self.font, COLOR_TEXT_DIM),
+            ("FPS cap: {0}".format(self.fps), self.font, COLOR_TEXT_DIM),
+            ("", self.font, COLOR_TEXT),
+            ("Space  pause / resume", self.font, COLOR_TEXT_DIM),
+            ("R      back to setup", self.font, COLOR_TEXT_DIM),
+            ("+/-    steps per frame", self.font, COLOR_TEXT_DIM),
+            ("Up/Dn  FPS cap", self.font, COLOR_TEXT_DIM),
+            ("Left   step back (1 frame)", self.font, COLOR_TEXT_DIM),
+            ("Right  step forward (1 frame)", self.font, COLOR_TEXT_DIM),
+            ("Esc    quit", self.font, COLOR_TEXT_DIM),
+        ]
+        for text, font, color in lines:
+            if not text:
+                y += 8
+                continue
+            surf = font.render(text, True, color)
+            self.screen.blit(surf, (x, y))
+            y += surf.get_height() + 6
+
+    def _draw_panel(self):
+        pygame.draw.rect(self.screen, COLOR_PANEL, self.panel_rect)
+        pygame.draw.line(
+            self.screen,
+            COLOR_PANEL_BORDER,
+            (self.panel_rect.x, 0),
+            (self.panel_rect.x, self.window_height),
+            2,
+        )
+        if self._config_editable:
+            self._draw_config_panel()
+        else:
+            self._draw_running_panel()
+
+    def _draw(self):
+        self.screen.fill(COLOR_BG)
+        self._draw_grid()
+        self._draw_panel()
+        pygame.display.flip()
+
+    def run(self):
+        while self._running:
+            self._handle_events()
+            self._simulate_steps()
+            self._draw()
+            self.clock.tick(self.fps)
+        pygame.quit()
+
+
+def run_pygame_app(
+    board_size=64,
+    neighborhood=8,
+    max_iter=2500,
+    rand_rate=0.5,
+    fps=DEFAULT_FPS,
+):
+    app = PygameApp(
+        board_size=board_size,
+        neighborhood=neighborhood,
+        max_iter=max_iter,
+        rand_rate=rand_rate,
+        fps=fps,
+    )
+    app.run()
