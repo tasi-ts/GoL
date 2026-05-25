@@ -1,10 +1,10 @@
 # Conway's Game of Life
 
-Active implementation under `src/`: a finite-grid simulator for [Conway's Game of Life](conways-game-of-life.md) with a **real-time Pygame UI**. The frozen reference copy lives in [`../legacy/`](../legacy/).
+Active implementation under `src/`: a finite-grid simulator for [Conway's Game of Life](src/docs/conways-game-of-life.md) with a **real-time Pygame UI**. The frozen reference copy lives in [`src/legacy/`](src/legacy/).
 
 ## Project summary
 
-The program models a square grid where each cell is either **alive** (1) or **dead** (0). On each **generation**, cells update under classic B3/S23 rules (see [Conway's Game of Life](conways-game-of-life.md)).
+The program models a square grid where each cell is either **alive** (1) or **dead** (0). On each **generation**, cells update under classic B3/S23 rules (see [Conway's Game of Life](src/docs/conways-game-of-life.md)).
 
 1. Setup screen (paused): configure board size, neighborhood, max generations, and random rate.
 2. **Start** seeds the board; simulation stays paused until you resume.
@@ -13,20 +13,20 @@ The program models a square grid where each cell is either **alive** (1) or **de
 
 | Module | Role |
 |--------|------|
-| [`board.py`](../board.py) | Grid state, live-cell set, seeding |
-| [`rules.py`](../rules.py) | 4- or 8-connected neighborhood on a bounded grid |
-| [`game.py`](../game.py) | Conway logic, `step()`, batch `run_simulation()` |
-| [`ui/pygame_app.py`](../ui/pygame_app.py) | Real-time display, input, panel layout |
+| [`board.py`](src/board.py) | Grid state, live-cell set, seeding |
+| [`rules.py`](src/rules.py) | 4- or 8-connected neighborhood on a bounded grid |
+| [`game.py`](src/game.py) | Conway logic, `step()`, batch `run_simulation()` |
+| [`ui/pygame_app.py`](src/ui/pygame_app.py) | Real-time display, input, panel layout |
 
-Dependencies: root [`requirements.txt`](../../requirements.txt) (`matplotlib`, `pygame`).
+Dependencies: [`requirements.txt`](requirements.txt) (`matplotlib`, `pygame`).
 
 ## Documentation index
 
-- [Conway's Game of Life — rules](conways-game-of-life.md)
-- [Board module](board.md)
-- [Rules module](rules.md)
-- [Game module](game.md)
-- [Pygame UI](ui.md)
+- [Conway's Game of Life — rules](src/docs/conways-game-of-life.md)
+- [Board module](src/docs/board.md)
+- [Rules module](src/docs/rules.md)
+- [Game module](src/docs/game.md)
+- [Pygame UI](src/docs/ui.md)
 
 ## Running (Pygame — default)
 
