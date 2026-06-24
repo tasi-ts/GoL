@@ -78,4 +78,4 @@ Optional later: **`pygame_gui`** for buttons and sliders without building a full
 
 ## Dependencies
 
-- **pygame** `>=2.0.0,<2.1` (Python 3.6–compatible 2.0.x line)
+- **pygame** `>=2.5.0` (pre-built wheels for Python 3.11+; older 2.0.x builds from source and needs SDL2 on macOS)
