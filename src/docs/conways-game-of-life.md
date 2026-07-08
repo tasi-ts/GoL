@@ -39,10 +39,11 @@ This legacy code can **stop early** when it detects repetition with period **1 t
 | Grid | `Board.array` — `size × size`, values 0/1 |
 | Live cells | `Board.cells` — set of `(x, y)` coordinates |
 | Neighbors | `Rules.calc_neighbors(x, y)` — 8-connected by default in `main()` |
+| Topology | `Rules.toroidal` — bounded (default) or wrap-around edges |
 | One generation | `GameOfLife.advance_board()` |
 | Initial pattern | `Board.add_random_coords(rate=...)` in `run_simulation()` |
 
-The implementation uses a **finite** board with edges; Conway's original formulation is often described on an infinite plane. Border cells therefore behave differently than in an unbounded or toroidal world.
+The implementation uses a **finite** board. By default edges are **hard boundaries** (border cells have fewer neighbors). Optionally, **toroidal** mode wraps the grid so every cell has a full neighborhood—closer to an infinite plane for patterns that reach the edges.
 
 ## Further reading
 

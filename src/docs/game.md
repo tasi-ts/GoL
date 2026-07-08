@@ -24,7 +24,7 @@ GameOfLife(init_board, rule_set, max_iter, rand_rate=0.5)
 | Attribute | Meaning |
 |-----------|---------|
 | `board` | Current `Board` instance |
-| `rule_set` | `Rules` instance (neighborhood + size) |
+| `rule_set` | `Rules` instance (neighborhood, size, and topology) |
 | `max_iter` | Maximum generations in `run_simulation` |
 | `rand_rate` | Fraction of cells to seed randomly; passed to `add_random_coords` |
 | `sequence` | List of **previous** `Board` snapshots (deep copies), used for stop condition and animation |
@@ -147,7 +147,6 @@ UI dependency: **pygame** (see [ui.md](ui.md)). `board.display_board()` still us
 
 ## Possible extensions (not implemented)
 
-- Toroidal boundaries in `Rules`
 - Configurable rule strings (e.g. HighLife B36/S23)
 - CLI arguments for size, density, and iteration cap
 - Ring buffer for `sequence` (only keep last `MAX_DETECTED_PERIOD` boards)

@@ -1,8 +1,13 @@
+CORE_OFFSETS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+DIAG_OFFSETS = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
+
+
 class Rules:
 
-    def __init__(self, neighborhood, size) -> None:
+    def __init__(self, neighborhood, size, toroidal=False) -> None:
         self.neighborhood = neighborhood
         self.size = size
+        self.toroidal = toroidal
         self.neighbors = set()
 
     @property
@@ -12,6 +17,10 @@ class Rules:
     @property
     def size(self):
         return self._size
+
+    @property
+    def toroidal(self):
+        return self._toroidal
 
     @neighborhood.setter
     def neighborhood(self, value):
@@ -25,25 +34,24 @@ class Rules:
             raise ValueError("--- Size must be greater than 2! ---")
         self._size = value
 
+    @toroidal.setter
+    def toroidal(self, value):
+        if not isinstance(value, bool):
+            raise ValueError("--- Toroidal must be True or False! ---")
+        self._toroidal = value
+
     def calc_neighbors(self, x, y):
         self.neighbors = set()
-        if not (x < self.size and y < self.size):
+        if not (0 <= x < self.size and 0 <= y < self.size):
             return
-        if self.neighborhood == 4 or self.neighborhood == 8:
-            if x-1 >= 0 and y >= 0:
-                self.neighbors.add((x-1,y))
-            if x+1 < self.size and y >= 0:
-                self.neighbors.add((x+1,y))
-            if y-1 >= 0 and x >= 0:
-                self.neighbors.add((x,y-1))
-            if y+1 < self.size and x >= 0:
-                self.neighbors.add((x,y+1))
+        offsets = list(CORE_OFFSETS)
         if self.neighborhood == 8:
-            if x-1 >= 0 and y-1 >= 0:
-                self.neighbors.add((x-1,y-1))
-            if x+1 < self.size and y-1 >= 0:
-                self.neighbors.add((x+1,y-1))
-            if x-1 >= 0 and y+1 < self.size:
-                self.neighbors.add((x-1,y+1))
-            if x+1 < self.size and y+1 < self.size:
-                self.neighbors.add((x+1,y+1))
+            offsets.extend(DIAG_OFFSETS)
+        for dx, dy in offsets:
+            nx, ny = x + dx, y + dy
+            if self.toroidal:
+                nx %= self.size
+                ny %= self.size
+            elif not (0 <= nx < self.size and 0 <= ny < self.size):
+                continue
+            self.neighbors.add((nx, ny))

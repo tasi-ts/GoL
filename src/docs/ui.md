@@ -32,7 +32,7 @@ Constants in `pygame_app.py`:
 - Opens **paused** in **setup** mode (`_simulation_started = False`). Config is editable until **Start** or **Enter**.
 - **`start_simulation()`** — seeds via `initialize_board()`, locks config, stays paused.
 - **`reset_to_setup()`** — clears run state; config editable again (**R**).
-- **`_draw_config_panel()`** — +/- buttons for board size, neighborhood (4/8), max generations, random rate.
+- **`_draw_config_panel()`** — +/- buttons for board size, neighborhood (4/8), topology (Bounded/Toroidal), max generations, random rate.
 - **`_draw_running_panel()`** — generation, population, status, locked settings summary.
 - **`run()`** — event loop: handle input → simulate → draw → `clock.tick(fps)`.
 
@@ -66,6 +66,7 @@ run_pygame_app(
     neighborhood=8,
     max_iter=2500,
     rand_rate=0.5,
+    toroidal=False,
     fps=30,
 )
 ```
