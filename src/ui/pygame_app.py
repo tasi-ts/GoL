@@ -61,12 +61,14 @@ class PygameApp(object):
         neighborhood=8,
         max_iter=2500,
         rand_rate=0.5,
+        toroidal=False,
         fps=DEFAULT_FPS,
     ):
         self.board_size = board_size
         self.neighborhood = neighborhood
         self.max_iter = max_iter
         self.rand_rate = rand_rate
+        self.toroidal = toroidal
         self.fps = fps
         self.steps_per_frame = DEFAULT_STEPS_PER_FRAME
 
@@ -97,7 +99,9 @@ class PygameApp(object):
     def _make_game(self):
         return GameOfLife(
             init_board=Board(self.board_size),
-            rule_set=Rules(self.neighborhood, self.board_size),
+            rule_set=Rules(
+                self.neighborhood, self.board_size, toroidal=self.toroidal
+            ),
             max_iter=self.max_iter,
             rand_rate=self.rand_rate,
         )
@@ -152,6 +156,7 @@ class PygameApp(object):
         rows = [
             ("board_size", self._dec_board_size, self._inc_board_size),
             ("neighborhood", self._dec_neighborhood, self._inc_neighborhood),
+            ("topology", self._dec_topology, self._inc_topology),
             ("max_iter", self._dec_max_iter, self._inc_max_iter),
             ("rand_rate", self._dec_rand_rate, self._inc_rand_rate),
         ]
@@ -190,6 +195,12 @@ class PygameApp(object):
 
     def _inc_neighborhood(self):
         self.neighborhood = 8
+
+    def _dec_topology(self):
+        self.toroidal = False
+
+    def _inc_topology(self):
+        self.toroidal = True
 
     def _dec_max_iter(self):
         self.max_iter = max(MAX_ITER_MIN, self.max_iter - MAX_ITER_STEP)
@@ -411,12 +422,14 @@ class PygameApp(object):
         labels = {
             "board_size": "Board size",
             "neighborhood": "Neighborhood",
+            "topology": "Topology",
             "max_iter": "Max generations",
             "rand_rate": "Random rate",
         }
         values = {
             "board_size": str(self.board_size),
             "neighborhood": str(self.neighborhood),
+            "topology": "Toroidal" if self.toroidal else "Bounded",
             "max_iter": str(self.max_iter),
             "rand_rate": "{0:.0%}".format(self.rand_rate),
         }
@@ -462,6 +475,9 @@ class PygameApp(object):
             ("Status: {0}".format(self.status), self.font, COLOR_TEXT),
             ("Board: {0}  Neighbor: {1}".format(
                 self.board_size, self.neighborhood
+            ), self.font, COLOR_TEXT_DIM),
+            ("Topology: {0}".format(
+                "Toroidal" if self.toroidal else "Bounded"
             ), self.font, COLOR_TEXT_DIM),
             ("Max gen: {0}  Seed: {1:.0%}".format(
                 self.max_iter, self.rand_rate
@@ -519,6 +535,7 @@ def run_pygame_app(
     neighborhood=8,
     max_iter=2500,
     rand_rate=0.5,
+    toroidal=False,
     fps=DEFAULT_FPS,
 ):
     app = PygameApp(
@@ -526,6 +543,7 @@ def run_pygame_app(
         neighborhood=neighborhood,
         max_iter=max_iter,
         rand_rate=rand_rate,
+        toroidal=toroidal,
         fps=fps,
     )
     app.run()
