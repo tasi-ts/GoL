@@ -321,7 +321,15 @@ class PygameApp(object):
             if event.type == pygame.QUIT:
                 self._running = False
             elif event.type == pygame.VIDEORESIZE:
-                self.window_width = max(MIN_WINDOW_WIDTH, event.w)
+                min_grid = 80 if self._is_sphere else max(80, self.board_size)
+                min_width = (
+                    GRID_MARGIN_LEFT
+                    + min_grid
+                    + GRID_PANEL_GAP
+                    + PANEL_WIDTH
+                    + WINDOW_PAD_RIGHT
+                )
+                self.window_width = max(min_width, event.w)
                 self.window_height = max(MIN_WINDOW_HEIGHT, event.h)
                 self.screen = pygame.display.set_mode(
                     (self.window_width, self.window_height), pygame.RESIZABLE
