@@ -13,8 +13,11 @@ GRID_MARGIN_TOP = 20
 GRID_PANEL_GAP = 10
 WINDOW_PAD_RIGHT = 8
 WINDOW_HEIGHT = 640
-MIN_CELL_SIZE = 4
-MAX_CELL_SIZE = 12
+GRID_MARGIN_BOTTOM = 20
+MIN_WINDOW_WIDTH = (
+    GRID_MARGIN_LEFT + 80 + GRID_PANEL_GAP + PANEL_WIDTH + WINDOW_PAD_RIGHT
+)
+MIN_WINDOW_HEIGHT = WINDOW_HEIGHT
 DEFAULT_FPS = 15
 DEFAULT_STEPS_PER_FRAME = 1
 
@@ -104,7 +107,9 @@ class PygameApp(object):
         self.font_small = pygame.font.SysFont("consolas", 14)
 
         self.game = self._make_game()
-        self._rebuild_window()
+        self.window_width, self.window_height = self._compute_initial_window_size()
+        self._init_display()
+        self._update_layout()
         pygame.display.set_caption("Conway's Game of Life")
         self.clock = pygame.time.Clock()
 
@@ -126,43 +131,50 @@ class PygameApp(object):
             rand_rate=self.rand_rate,
         )
 
-    def _grid_pixel_size(self):
+    def _compute_initial_window_size(self):
+        """One-time startup sizing to match pre-resize defaults."""
         if self._is_sphere:
-            return min(WINDOW_HEIGHT - 40, 520)
-        self.cell_size = max(
-            MIN_CELL_SIZE,
-            min(MAX_CELL_SIZE, (WINDOW_HEIGHT - 40) // self.board_size),
-        )
-        return self.board_size * self.cell_size
-
-    def _rebuild_window(self):
-        grid_pixels = self._grid_pixel_size()
-        self.window_height = max(
-            WINDOW_HEIGHT, grid_pixels + GRID_MARGIN_TOP + 20
-        )
-
-        self.grid_rect = pygame.Rect(
-            GRID_MARGIN_LEFT,
-            GRID_MARGIN_TOP,
-            grid_pixels,
-            grid_pixels,
-        )
-        self.panel_rect = pygame.Rect(
-            self.grid_rect.right + GRID_PANEL_GAP,
-            0,
-            PANEL_WIDTH,
-            self.window_height,
-        )
-        self.window_width = self.panel_rect.right + WINDOW_PAD_RIGHT
-
-        if hasattr(self, "screen"):
-            self.screen = pygame.display.set_mode(
-                (self.window_width, self.window_height)
-            )
+            grid_pixels = min(WINDOW_HEIGHT - 40, 520)
         else:
-            self.screen = pygame.display.set_mode(
-                (self.window_width, self.window_height)
+            baseline_cell = max(
+                4,
+                min(12, (WINDOW_HEIGHT - 40) // self.board_size),
             )
+            grid_pixels = self.board_size * baseline_cell
+        window_height = max(
+            WINDOW_HEIGHT,
+            grid_pixels + GRID_MARGIN_TOP + GRID_MARGIN_BOTTOM,
+        )
+        window_width = (
+            GRID_MARGIN_LEFT
+            + grid_pixels
+            + GRID_PANEL_GAP
+            + PANEL_WIDTH
+            + WINDOW_PAD_RIGHT
+        )
+        return window_width, window_height
+
+    def _init_display(self):
+        self.screen = pygame.display.set_mode(
+            (self.window_width, self.window_height), pygame.RESIZABLE
+        )
+
+    def _update_layout(self):
+        panel_left = self.window_width - PANEL_WIDTH - WINDOW_PAD_RIGHT
+        self.panel_rect = pygame.Rect(
+            panel_left, 0, PANEL_WIDTH, self.window_height
+        )
+
+        avail_w = panel_left - GRID_MARGIN_LEFT - GRID_PANEL_GAP
+        avail_h = self.window_height - GRID_MARGIN_TOP - GRID_MARGIN_BOTTOM
+        grid_side = max(1, min(avail_w, avail_h))
+        self.grid_rect = pygame.Rect(
+            GRID_MARGIN_LEFT, GRID_MARGIN_TOP, grid_side, grid_side
+        )
+
+        if not self._is_sphere:
+            self.cell_size = max(1, self.grid_rect.width // self.board_size)
+
         self._build_config_buttons()
 
     def _config_row_layout(self, row_y):
@@ -253,7 +265,7 @@ class PygameApp(object):
 
     def _apply_config_change(self):
         self.game = self._make_game()
-        self._rebuild_window()
+        self._update_layout()
 
     def start_simulation(self):
         if self._simulation_started:
@@ -308,6 +320,13 @@ class PygameApp(object):
 
             if event.type == pygame.QUIT:
                 self._running = False
+            elif event.type == pygame.VIDEORESIZE:
+                self.window_width = max(MIN_WINDOW_WIDTH, event.w)
+                self.window_height = max(MIN_WINDOW_HEIGHT, event.h)
+                self.screen = pygame.display.set_mode(
+                    (self.window_width, self.window_height), pygame.RESIZABLE
+                )
+                self._update_layout()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 self._handle_config_click(event.pos)
             elif event.type == pygame.KEYDOWN:
@@ -392,8 +411,9 @@ class PygameApp(object):
         board = self.game.board
         size = board.size
         cell = self.cell_size
-        origin_x = self.grid_rect.x
-        origin_y = self.grid_rect.y
+        board_pixels = size * cell
+        origin_x = self.grid_rect.x + (self.grid_rect.width - board_pixels) // 2
+        origin_y = self.grid_rect.y + (self.grid_rect.height - board_pixels) // 2
 
         pygame.draw.rect(self.screen, COLOR_DEAD, self.grid_rect)
         for x in range(size):

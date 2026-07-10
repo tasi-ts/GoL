@@ -19,13 +19,24 @@ Constants in `pygame_app.py`:
 
 | Constant | Default | Purpose |
 |----------|---------|---------|
-| `PANEL_WIDTH` | 480 | Right column width for stats and controls |
+| `PANEL_WIDTH` | 480 | Right column width for stats and controls (fixed; right-anchored) |
 | `DEFAULT_FPS` | 15 | Default FPS cap |
 | `WINDOW_HEIGHT` | 640 | Minimum window height |
-| `MIN_CELL_SIZE` / `MAX_CELL_SIZE` | 4 / 12 | Cell pixel size clamp (flat modes) |
+| `MIN_WINDOW_WIDTH` / `MIN_WINDOW_HEIGHT` | derived / 640 | Smallest allowed window when resizing |
 | `FREQUENCY_MIN` / `MAX` / `STEP` | 4 / 16 / 2 | Geodesic frequency range |
 
-`grid_rect` holds the board view (2D grid or 3D sphere); `panel_rect` is everything to the right of the grid.
+`grid_rect` holds the board view (2D grid or 3D sphere); `panel_rect` is the fixed 480px column anchored to the right edge of the window.
+
+### Window resize and zoom
+
+The window is **resizable** (`pygame.RESIZABLE`). Dragging edges changes only the left game viewport:
+
+- **Right panel** stays 480px wide, glued to the right; button sizes, fonts, and layout do not scale.
+- **Left grid view** grows or shrinks; in 2D modes `cell_size` is recalculated as `grid_rect.width // board_size` (minimum 1px per cell), so resize acts as zoom in/out.
+- **Board config changes** (board size, topology, frequency) call `_update_layout()` only — the OS window size is unchanged; cells rescale within the existing viewport.
+- **Sphere mode** uses the full `grid_rect` for projection; `[` / `]` zoom is additive on top of viewport size.
+
+On first launch, `_compute_initial_window_size()` preserves the previous default dimensions (1094×640 for a 64×64 board).
 
 ## `PygameApp`
 
@@ -63,7 +74,8 @@ Defined in **`PygameApp._handle_events()`**. Left/Right call **`_pause_for_scrub
 | +/- keys | — | Steps per frame (after Start) |
 | Up/Down | — | FPS cap |
 | Drag on grid (Sphere) | `SphereRenderer` | Rotate view |
-| `[` / `]` (Sphere) | `SphereRenderer` | Zoom |
+| `[` / `]` (Sphere) | `SphereRenderer` | Zoom (additive to viewport size) |
+| Window resize | `_update_layout()` | Zoom 2D grid / rescale sphere viewport; panel unchanged |
 | Esc / Q | — | Quit |
 
 Frame scrubbing uses `game.sequence` and `game._initial_board` (see `step_back()` in `game.py`).
