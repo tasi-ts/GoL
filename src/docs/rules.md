@@ -4,6 +4,8 @@
 
 The `Rules` class does **not** encode Conway's birth/survival logic. It only defines **which adjacent cells count as neighbors** for a coordinate on a **square grid** of a given `size`, with either **bounded** (hard edges) or **toroidal** (wrap-around) topology. Conway's B3/S23 rules are applied in `game.py` after neighbor counts are computed.
 
+> **Sphere mode:** `Rules` is not used. Geodesic boards use fixed mesh adjacency (see [geodesic.md](geodesic.md)).
+
 ## Class: `Rules`
 
 ### Constructor
@@ -59,7 +61,7 @@ On a toroidal board, every cell has exactly **4** or **8** neighbors (matching `
 
 ### Usage in the simulation
 
-`GameOfLife.check_area()` calls `self.rule_set.calc_neighbors(x, y)` and then iterates `self.rule_set.neighbors` to count live neighbors and collect dead neighbor cells for birth checks.
+`GameOfLife` calls `board.neighbors(cell)` on flat boards, which delegates to `Rules.calc_neighbors`. On geodesic boards, neighbors come from the mesh directly.
 
 Default in `main()`:
 
@@ -79,6 +81,6 @@ Separating **topology** (who is adjacent) from **dynamics** (Conway rules in `ad
 
 ## Limitations
 
-- Only **bounded** and **toroidal** topologies are supported (no infinite plane).
+- Only **bounded** and **toroidal** topologies are supported for flat grids (sphere uses mesh adjacency; see [geodesic.md](geodesic.md)).
 - `calc_neighbors` does not exclude the center cell `(x, y)` from the neighbor set (it only adds offsets, so the center is never included).
 - Invalid `(x, y)` outside the board clears neighbors and returns without error.
