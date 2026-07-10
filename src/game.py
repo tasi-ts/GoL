@@ -1,6 +1,6 @@
 import copy
 
-from board import Board, FlatBoard
+from board import FlatBoard
 from geodesic_board import GeodesicBoard
 from rules import Rules
 
