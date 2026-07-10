@@ -1,8 +1,9 @@
 import pygame
 
-from board import Board
-from game import GameOfLife
-from rules import Rules
+from game import make_game
+from geodesic_mesh import GeodesicMesh
+from topology import Topology
+from ui.sphere_renderer import SphereRenderer
 
 
 # Layout: grid on the left, side panel for stats and controls.
@@ -20,6 +21,10 @@ DEFAULT_STEPS_PER_FRAME = 1
 BOARD_SIZE_MIN = 16
 BOARD_SIZE_MAX = 128
 BOARD_SIZE_STEP = 8
+
+FREQUENCY_MIN = 4
+FREQUENCY_MAX = 16
+FREQUENCY_STEP = 2
 
 MAX_ITER_MIN = 100
 MAX_ITER_MAX = 10000
@@ -62,13 +67,19 @@ class PygameApp(object):
         max_iter=2500,
         rand_rate=0.5,
         toroidal=False,
+        topology=None,
+        frequency=8,
         fps=DEFAULT_FPS,
     ):
         self.board_size = board_size
+        self.frequency = frequency
         self.neighborhood = neighborhood
         self.max_iter = max_iter
         self.rand_rate = rand_rate
-        self.toroidal = toroidal
+        if topology is not None:
+            self.topology = topology
+        else:
+            self.topology = Topology.from_toroidal(toroidal)
         self.fps = fps
         self.steps_per_frame = DEFAULT_STEPS_PER_FRAME
 
@@ -81,6 +92,11 @@ class PygameApp(object):
 
         self._config_buttons = []
         self._start_button_rect = None
+        self.sphere_renderer = SphereRenderer(
+            color_alive=COLOR_ALIVE,
+            color_dead=COLOR_DEAD,
+            color_edge=COLOR_GRID_LINE,
+        )
 
         pygame.init()
         self.font = pygame.font.SysFont("consolas", 16)
@@ -96,22 +112,31 @@ class PygameApp(object):
     def _config_editable(self):
         return not self._simulation_started
 
+    @property
+    def _is_sphere(self):
+        return self.topology == Topology.SPHERE
+
     def _make_game(self):
-        return GameOfLife(
-            init_board=Board(self.board_size),
-            rule_set=Rules(
-                self.neighborhood, self.board_size, toroidal=self.toroidal
-            ),
+        return make_game(
+            topology=self.topology,
+            board_size=self.board_size,
+            frequency=self.frequency,
+            neighborhood=self.neighborhood,
             max_iter=self.max_iter,
             rand_rate=self.rand_rate,
         )
 
-    def _rebuild_window(self):
+    def _grid_pixel_size(self):
+        if self._is_sphere:
+            return min(WINDOW_HEIGHT - 40, 520)
         self.cell_size = max(
             MIN_CELL_SIZE,
             min(MAX_CELL_SIZE, (WINDOW_HEIGHT - 40) // self.board_size),
         )
-        grid_pixels = self.board_size * self.cell_size
+        return self.board_size * self.cell_size
+
+    def _rebuild_window(self):
+        grid_pixels = self._grid_pixel_size()
         self.window_height = max(
             WINDOW_HEIGHT, grid_pixels + GRID_MARGIN_TOP + 20
         )
@@ -128,7 +153,6 @@ class PygameApp(object):
             PANEL_WIDTH,
             self.window_height,
         )
-        # Window must fit grid margins + gap + full panel (was clipping ~30px on the right).
         self.window_width = self.panel_rect.right + WINDOW_PAD_RIGHT
 
         if hasattr(self, "screen"):
@@ -142,7 +166,6 @@ class PygameApp(object):
         self._build_config_buttons()
 
     def _config_row_layout(self, row_y):
-        """Label left; value before minus; minus and plus grouped on the right."""
         x_label = self.panel_rect.x + CONFIG_PAD
         x_plus = self.panel_rect.right - CONFIG_PAD - BUTTON_W
         x_minus = x_plus - BUTTON_GAP - BUTTON_W
@@ -183,24 +206,34 @@ class PygameApp(object):
         )
 
     def _dec_board_size(self):
-        self.board_size = max(BOARD_SIZE_MIN, self.board_size - BOARD_SIZE_STEP)
+        if self._is_sphere:
+            self.frequency = max(FREQUENCY_MIN, self.frequency - FREQUENCY_STEP)
+        else:
+            self.board_size = max(BOARD_SIZE_MIN, self.board_size - BOARD_SIZE_STEP)
         self._apply_config_change()
 
     def _inc_board_size(self):
-        self.board_size = min(BOARD_SIZE_MAX, self.board_size + BOARD_SIZE_STEP)
+        if self._is_sphere:
+            self.frequency = min(FREQUENCY_MAX, self.frequency + FREQUENCY_STEP)
+        else:
+            self.board_size = min(BOARD_SIZE_MAX, self.board_size + BOARD_SIZE_STEP)
         self._apply_config_change()
 
     def _dec_neighborhood(self):
-        self.neighborhood = 4
+        if not self._is_sphere:
+            self.neighborhood = 4
 
     def _inc_neighborhood(self):
-        self.neighborhood = 8
+        if not self._is_sphere:
+            self.neighborhood = 8
 
     def _dec_topology(self):
-        self.toroidal = False
+        self.topology = self.topology.prev()
+        self._apply_config_change()
 
     def _inc_topology(self):
-        self.toroidal = True
+        self.topology = self.topology.next()
+        self._apply_config_change()
 
     def _dec_max_iter(self):
         self.max_iter = max(MAX_ITER_MIN, self.max_iter - MAX_ITER_STEP)
@@ -242,7 +275,6 @@ class PygameApp(object):
         self.game = self._make_game()
 
     def reset(self):
-        """Return to setup screen (config editable again)."""
         self.reset_to_setup()
 
     def _handle_config_click(self, pos):
@@ -254,21 +286,26 @@ class PygameApp(object):
         for row in self._config_buttons:
             if row["minus"].collidepoint(pos):
                 row["on_dec"]()
-                if row["key"] == "board_size":
-                    self._apply_config_change()
+                if row["key"] in ("board_size", "topology"):
+                    pass  # already applied in handler
                 else:
                     self.game = self._make_game()
                 return
             if row["plus"].collidepoint(pos):
                 row["on_inc"]()
-                if row["key"] == "board_size":
-                    self._apply_config_change()
+                if row["key"] in ("board_size", "topology"):
+                    pass
                 else:
                     self.game = self._make_game()
                 return
 
     def _handle_events(self):
         for event in pygame.event.get():
+            if self._is_sphere and self._simulation_started:
+                self.sphere_renderer.handle_event(event, self.grid_rect)
+            elif self._is_sphere and self._config_editable:
+                self.sphere_renderer.handle_event(event, self.grid_rect)
+
             if event.type == pygame.QUIT:
                 self._running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -361,7 +398,7 @@ class PygameApp(object):
         pygame.draw.rect(self.screen, COLOR_DEAD, self.grid_rect)
         for x in range(size):
             for y in range(size):
-                if board.array[x][y]:
+                if board.is_alive((x, y)):
                     pygame.draw.rect(
                         self.screen,
                         COLOR_ALIVE,
@@ -406,6 +443,17 @@ class PygameApp(object):
         ty = rect.y + (rect.height - surf.get_height()) // 2
         self.screen.blit(surf, (tx, ty))
 
+    def _board_size_label(self):
+        if self._is_sphere:
+            return "Frequency"
+        return "Board size"
+
+    def _board_size_value(self):
+        if self._is_sphere:
+            cells = GeodesicMesh.expected_cell_count(self.frequency)
+            return "{0} ({1})".format(self.frequency, cells)
+        return str(self.board_size)
+
     def _draw_config_panel(self):
         x = self.panel_rect.x + CONFIG_PAD
         y = 24
@@ -420,16 +468,16 @@ class PygameApp(object):
         y = CONFIG_ROW_START_Y
 
         labels = {
-            "board_size": "Board size",
+            "board_size": self._board_size_label(),
             "neighborhood": "Neighborhood",
             "topology": "Topology",
             "max_iter": "Max generations",
             "rand_rate": "Random rate",
         }
         values = {
-            "board_size": str(self.board_size),
+            "board_size": self._board_size_value(),
             "neighborhood": str(self.neighborhood),
-            "topology": "Toroidal" if self.toroidal else "Bounded",
+            "topology": self.topology.label(),
             "max_iter": str(self.max_iter),
             "rand_rate": "{0:.0%}".format(self.rand_rate),
         }
@@ -437,13 +485,26 @@ class PygameApp(object):
         for row in self._config_buttons:
             key = row["key"]
             row_y = row["minus"].y
-            label_surf = self.font.render(labels[key], True, COLOR_TEXT)
+            label_color = COLOR_TEXT_DIM if (
+                key == "neighborhood" and self._is_sphere
+            ) else COLOR_TEXT
+            label_surf = self.font.render(labels[key], True, label_color)
             self.screen.blit(label_surf, (row["label_x"], row_y + 5))
-            val_surf = self.font.render(values[key], True, COLOR_ACCENT)
+            val_color = COLOR_TEXT_DIM if (
+                key == "neighborhood" and self._is_sphere
+            ) else COLOR_ACCENT
+            val_surf = self.font.render(values[key], True, val_color)
             val_x = row["minus"].x - VALUE_BUTTON_GAP - val_surf.get_width()
             self.screen.blit(val_surf, (val_x, row_y + 5))
-            self._draw_button(row["minus"], "-", enabled=self._config_editable)
-            self._draw_button(row["plus"], "+", enabled=self._config_editable)
+            neigh_enabled = self._config_editable and not (
+                key == "neighborhood" and self._is_sphere
+            )
+            self._draw_button(
+                row["minus"], "-", enabled=neigh_enabled
+            )
+            self._draw_button(
+                row["plus"], "+", enabled=neigh_enabled
+            )
             y = row_y + ROW_HEIGHT
 
         if self._start_button_rect:
@@ -455,11 +516,15 @@ class PygameApp(object):
             )
 
         y = self._start_button_rect.bottom + 24
-        for line in [
+        hints = [
             "Enter  also starts",
             "R      new setup",
             "Esc    quit",
-        ]:
+        ]
+        if self._is_sphere:
+            hints.insert(1, "Drag   rotate sphere")
+            hints.insert(2, "[ ]    zoom")
+        for line in hints:
             surf = self.font_small.render(line, True, COLOR_TEXT_DIM)
             self.screen.blit(surf, (x, y))
             y += surf.get_height() + 4
@@ -467,18 +532,24 @@ class PygameApp(object):
     def _draw_running_panel(self):
         x = self.panel_rect.x + 16
         y = 24
+        if self._is_sphere:
+            board_line = "Frequency: {0}  Cells: {1}".format(
+                self.frequency,
+                GeodesicMesh.expected_cell_count(self.frequency),
+            )
+        else:
+            board_line = "Board: {0}  Neighbor: {1}".format(
+                self.board_size, self.neighborhood
+            )
+
         lines = [
             ("Conway's Game of Life", self.font_title, COLOR_ACCENT),
             ("", self.font, COLOR_TEXT),
             ("Generation: {0}".format(self.generation), self.font, COLOR_TEXT),
             ("Population: {0}".format(self.game.board.area), self.font, COLOR_TEXT),
             ("Status: {0}".format(self.status), self.font, COLOR_TEXT),
-            ("Board: {0}  Neighbor: {1}".format(
-                self.board_size, self.neighborhood
-            ), self.font, COLOR_TEXT_DIM),
-            ("Topology: {0}".format(
-                "Toroidal" if self.toroidal else "Bounded"
-            ), self.font, COLOR_TEXT_DIM),
+            (board_line, self.font, COLOR_TEXT_DIM),
+            ("Topology: {0}".format(self.topology.label()), self.font, COLOR_TEXT_DIM),
             ("Max gen: {0}  Seed: {1:.0%}".format(
                 self.max_iter, self.rand_rate
             ), self.font, COLOR_TEXT_DIM),
@@ -493,6 +564,8 @@ class PygameApp(object):
             ("Right  step forward (1 frame)", self.font, COLOR_TEXT_DIM),
             ("Esc    quit", self.font, COLOR_TEXT_DIM),
         ]
+        if self._is_sphere:
+            lines.insert(-1, ("Drag   rotate  [ ] zoom", self.font, COLOR_TEXT_DIM))
         for text, font, color in lines:
             if not text:
                 y += 8
@@ -517,7 +590,12 @@ class PygameApp(object):
 
     def _draw(self):
         self.screen.fill(COLOR_BG)
-        self._draw_grid()
+        if self._is_sphere:
+            self.sphere_renderer.draw(
+                self.screen, self.game.board, self.grid_rect
+            )
+        else:
+            self._draw_grid()
         self._draw_panel()
         pygame.display.flip()
 
@@ -536,14 +614,19 @@ def run_pygame_app(
     max_iter=2500,
     rand_rate=0.5,
     toroidal=False,
+    topology=None,
+    frequency=8,
     fps=DEFAULT_FPS,
 ):
+    if topology is None:
+        topology = Topology.from_toroidal(toroidal)
     app = PygameApp(
         board_size=board_size,
         neighborhood=neighborhood,
         max_iter=max_iter,
         rand_rate=rand_rate,
-        toroidal=toroidal,
+        topology=topology,
+        frequency=frequency,
         fps=fps,
     )
     app.run()

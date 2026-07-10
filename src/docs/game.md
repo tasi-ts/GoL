@@ -143,7 +143,7 @@ Legacy matplotlib replay remains in `src/legacy/game.py` only.
 
 - **`copy.deepcopy`** — generation snapshots for period detection
 
-UI dependency: **pygame** (see [ui.md](ui.md)). `board.display_board()` still uses matplotlib optionally.
+UI dependency: **pygame-ce** (see [ui.md](ui.md); imported as `pygame`). `board.display_board()` still uses matplotlib optionally.
 
 ## Possible extensions (not implemented)
 
