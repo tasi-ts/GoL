@@ -1,9 +1,9 @@
 import copy
-import random
 
 import pytest
 
-from gol.board import Board, FlatBoard
+from gol.board import Board, BoardProtocol, FlatBoard
+from gol.geodesic_board import GeodesicBoard
 from gol.rules import Rules
 
 pytestmark = pytest.mark.unit
@@ -17,32 +17,35 @@ def test_board_alias_is_flat_board():
     assert Board is FlatBoard
 
 
+def test_flat_and_geodesic_satisfy_protocol():
+    assert isinstance(_board(), BoardProtocol)
+    assert isinstance(GeodesicBoard(2), BoardProtocol)
+
+
 def test_new_board_is_empty():
     board = _board()
     assert board.cells == set()
     assert board.area == 0
     assert board.cell_count == 25
-    assert all(cell == 0 for row in board.array for cell in row)
+    assert not any(board.is_alive((i, j)) for i in range(5) for j in range(5))
 
 
-def test_set_alive_updates_array_and_cells():
+def test_set_alive_updates_live_cells():
     board = _board()
     board.set_alive((1, 2), True)
     assert board.is_alive((1, 2))
-    assert board.array[1][2] == 1
     assert (1, 2) in board.cells
     board.set_alive((1, 2), False)
     assert not board.is_alive((1, 2))
-    assert board.array[1][2] == 0
     assert (1, 2) not in board.cells
 
 
-def test_set_alive_does_not_refresh_area():
+def test_area_tracks_live_cells():
     board = _board()
     board.set_alive((0, 0), True)
-    assert board.area == 0
-    board.calc_area()
     assert board.area == 1
+    board.set_alive((0, 0), False)
+    assert board.area == 0
 
 
 def test_add_object_sets_area():
@@ -53,26 +56,32 @@ def test_add_object_sets_area():
 
 
 def test_add_random_coords_default_rate_is_half():
-    random.seed(0)
     board = _board(size=10)
-    board.add_random_coords()
+    board.add_random_coords(seed=0)
     assert board.area == 50
     assert len(board.cells) == 50
 
 
 def test_add_random_coords_honors_rate():
-    random.seed(1)
     board = _board(size=10)
-    board.add_random_coords(rate=0.2)
+    board.add_random_coords(rate=0.2, seed=1)
     assert board.area == 20
 
 
-def test_calc_area_raises_when_array_and_cells_diverge():
-    board = _board()
-    board.set_alive((0, 0), True)
-    board.cells.discard((0, 0))
-    with pytest.raises(Exception, match="Area is inconsistent"):
-        board.calc_area()
+def test_same_seed_reproduces_live_cells():
+    first = _board(size=10)
+    second = _board(size=10)
+    first.add_random_coords(rate=0.3, seed=42)
+    second.add_random_coords(rate=0.3, seed=42)
+    assert first.live_cells == second.live_cells
+
+
+def test_convert_to_binary_image_uses_live_cells():
+    board = _board(size=3)
+    board.set_alive((1, 2), True)
+    image = board.convert_to_binary_image()
+    assert image[1][2] == 255
+    assert image[0][0] == 0
 
 
 def test_neighbors_require_rules():
@@ -93,8 +102,9 @@ def test_deepcopy_is_independent():
     clone = copy.deepcopy(board)
     clone.set_alive((2, 2), False)
     clone.set_alive((0, 0), True)
-    clone.calc_area()
     assert board.is_alive((2, 2))
     assert not board.is_alive((0, 0))
     assert clone.area == 1
     assert board.area == 1
+    assert not hasattr(board, "array")
+    assert not hasattr(clone, "array")

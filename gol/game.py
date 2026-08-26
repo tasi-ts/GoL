@@ -9,13 +9,16 @@ MAX_DETECTED_PERIOD = 6
 
 class GameOfLife:
 
-    def __init__(self, init_board, rule_set=None, max_iter=2500, rand_rate=0.5) -> None:
+    def __init__(
+        self, init_board, rule_set=None, max_iter=2500, rand_rate=0.5, seed=None
+    ) -> None:
         self.board = init_board
         if isinstance(init_board, FlatBoard) and rule_set is not None:
             init_board.rules = rule_set
         self.rule_set = rule_set
         self.max_iter = max_iter
         self.rand_rate = rand_rate
+        self.seed = seed
         self.sequence = []
         self._initial_board = None
 
@@ -56,7 +59,7 @@ class GameOfLife:
 
     def initialize_board(self):
         if self.rand_rate:
-            self.board.add_random_coords(rate=self.rand_rate)
+            self.board.add_random_coords(rate=self.rand_rate, seed=self.seed)
         self.board.calc_area()
         self._initial_board = copy.deepcopy(self.board)
         self.sequence = []
@@ -114,13 +117,16 @@ def make_game(
     neighborhood=8,
     max_iter=2500,
     rand_rate=0.5,
+    seed=None,
 ):
     """Factory for flat or geodesic games."""
     from .topology import Topology
 
     if topology == Topology.SPHERE:
         board = GeodesicBoard(frequency)
-        return GameOfLife(board, rule_set=None, max_iter=max_iter, rand_rate=rand_rate)
+        return GameOfLife(
+            board, rule_set=None, max_iter=max_iter, rand_rate=rand_rate, seed=seed
+        )
 
     rules = Rules(
         neighborhood,
@@ -128,7 +134,9 @@ def make_game(
         toroidal=(topology == Topology.TOROIDAL),
     )
     board = FlatBoard(board_size, rules=rules)
-    return GameOfLife(board, rule_set=rules, max_iter=max_iter, rand_rate=rand_rate)
+    return GameOfLife(
+        board, rule_set=rules, max_iter=max_iter, rand_rate=rand_rate, seed=seed
+    )
 
 
 def main():

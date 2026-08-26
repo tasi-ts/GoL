@@ -1,6 +1,5 @@
-import random
-
 from .geodesic_mesh import GeodesicMesh
+from .seeding import make_rng, target_live_count
 
 
 class GeodesicBoard:
@@ -10,7 +9,6 @@ class GeodesicBoard:
         self.frequency = frequency
         self.mesh = GeodesicMesh(frequency)
         self.cells = set()
-        self.area = 0
 
     @property
     def cell_count(self):
@@ -23,6 +21,10 @@ class GeodesicBoard:
     @property
     def live_cells(self):
         return self.cells
+
+    @property
+    def area(self):
+        return len(self.cells)
 
     def is_alive(self, cell):
         return cell in self.cells
@@ -37,22 +39,17 @@ class GeodesicBoard:
         return self.mesh.adjacency[cell]
 
     def calc_area(self):
-        self.area = len(self.cells)
+        """No-op: ``area`` is ``len(live_cells)``."""
 
     def add_object(self, coord_set):
         self.cells = self.cells.union(coord_set)
-        self.calc_area()
 
-    def add_random_coords(self, rate=None):
-        if rate is None:
-            num = int(self.cell_count * 0.5)
-        else:
-            num = int(self.cell_count * rate)
+    def add_random_coords(self, rate=None, seed=None):
+        num = target_live_count(self.cell_count, rate)
         candidates = list(range(self.cell_count))
-        random.shuffle(candidates)
+        make_rng(seed).shuffle(candidates)
         for cell_id in candidates[:num]:
             self.cells.add(cell_id)
-        self.calc_area()
 
     def print_cells(self):
         print(self.cells, end="\n\n")
@@ -66,5 +63,4 @@ class GeodesicBoard:
         new_board.frequency = self.frequency
         new_board.mesh = self.mesh
         new_board.cells = set(self.cells)
-        new_board.area = self.area
         return new_board

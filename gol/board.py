@@ -1,18 +1,46 @@
 import copy
-import random
+from typing import Protocol, runtime_checkable
 
 import matplotlib.pyplot as plt
 
+from .seeding import make_rng, target_live_count
+
+
+@runtime_checkable
+class BoardProtocol(Protocol):
+    """Shared surface used by ``GameOfLife`` for flat and geodesic boards."""
+
+    cells: set
+
+    @property
+    def cell_count(self) -> int: ...
+
+    @property
+    def live_cells(self) -> set: ...
+
+    @property
+    def area(self) -> int: ...
+
+    def is_alive(self, cell) -> bool: ...
+
+    def set_alive(self, cell, alive: bool) -> None: ...
+
+    def neighbors(self, cell): ...
+
+    def add_object(self, coord_set) -> None: ...
+
+    def add_random_coords(self, rate=None, seed=None) -> None: ...
+
+    def calc_area(self) -> None: ...
+
 
 class FlatBoard:
-    """Square grid board implementing the shared board protocol."""
+    """Square grid board. Live cells are ``(row, column)`` pairs."""
 
     def __init__(self, size, rules=None) -> None:
         self.size = size
         self.rules = rules
-        self.array = [[0 for _ in range(self.size)] for _ in range(self.size)]
         self.cells = set()
-        self.area = 0
 
     @property
     def cell_count(self):
@@ -22,13 +50,14 @@ class FlatBoard:
     def live_cells(self):
         return self.cells
 
+    @property
+    def area(self):
+        return len(self.cells)
+
     def is_alive(self, cell):
-        x, y = cell
-        return self.array[x][y] == 1
+        return cell in self.cells
 
     def set_alive(self, cell, alive):
-        x, y = cell
-        self.array[x][y] = 1 if alive else 0
         if alive:
             self.cells.add(cell)
         else:
@@ -50,13 +79,13 @@ class FlatBoard:
     def print_board(self):
         for i in range(self.size):
             for j in range(self.size):
-                print("{0}".format(self.array[i][j]), end=" ")
+                print("{0}".format(1 if self.is_alive((i, j)) else 0), end=" ")
             print()
         print()
 
     def convert_to_binary_image(self):
         return [
-            [self.array[j][i] * 255 for i in range(self.size)]
+            [255 if self.is_alive((j, i)) else 0 for i in range(self.size)]
             for j in range(self.size)
         ]
 
@@ -67,41 +96,26 @@ class FlatBoard:
 
     def add_object(self, coord_set):
         self.cells = self.cells.union(coord_set)
-        for elem in coord_set:
-            x, y = elem
-            self.array[x][y] = 1
-        self.calc_area()
 
-    def add_random_coords(self, rate=None):
-        if rate is None:
-            num = int(self.size * self.size * 0.5)
-        else:
-            num = int(self.size * self.size * rate)
-        cnt = 0
-        while cnt < num:
-            x = random.randrange(self.size)
-            y = random.randrange(self.size)
-            if (x, y) not in self.cells:
-                self.cells.add((x, y))
-                self.array[x][y] = 1
-                cnt += 1
-        self.calc_area()
+    def add_random_coords(self, rate=None, seed=None):
+        num = target_live_count(self.cell_count, rate)
+        rng = make_rng(seed)
+        added = 0
+        while added < num:
+            cell = (rng.randrange(self.size), rng.randrange(self.size))
+            if cell not in self.cells:
+                self.cells.add(cell)
+                added += 1
 
     def calc_area(self):
-        area_array = int(sum([sum(row) for row in self.array]))
-        area_cells = len(self.cells)
-        if not area_array == area_cells:
-            raise Exception("--- Area is inconsistent! ---")
-        self.area = area_cells
+        """No-op: ``area`` is ``len(live_cells)``."""
 
     def __deepcopy__(self, memo):
         new_board = object.__new__(FlatBoard)
         memo[id(self)] = new_board
         new_board.size = self.size
         new_board.rules = copy.deepcopy(self.rules, memo) if self.rules else None
-        new_board.array = copy.deepcopy(self.array, memo)
         new_board.cells = set(self.cells)
-        new_board.area = self.area
         return new_board
 
 
