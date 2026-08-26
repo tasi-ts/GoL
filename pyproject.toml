@@ -17,5 +17,18 @@ dependencies = [
 [project.scripts]
 gol = "gol.cli:main"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
 [tool.setuptools.packages.find]
 include = ["gol*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "unit: isolated unit tests",
+    "integration: multi-module engine tests",
+]
