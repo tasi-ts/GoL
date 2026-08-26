@@ -33,6 +33,7 @@ pythonpath = ["."]
 markers = [
     "unit: isolated unit tests",
     "integration: multi-module engine tests",
+    "e2e: pygame UI tests (dummy video driver)",
 ]
 
 [tool.ruff]
