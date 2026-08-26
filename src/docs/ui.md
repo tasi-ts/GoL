@@ -1,6 +1,6 @@
 # Pygame UI (`ui/pygame_app.py`)
 
-Real-time viewer for the active `src/` implementation. Uses **pygame-ce** (`pip install pygame-ce`; `import pygame` in code). Replaces the legacy post-run matplotlib animation.
+Real-time viewer for the `gol` package. Uses **pygame-ce** (`pip install pygame-ce`; `import pygame` in code). Replaces the legacy post-run matplotlib animation.
 
 ## Layout
 

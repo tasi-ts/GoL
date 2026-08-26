@@ -1,6 +1,6 @@
 # `board.py` — Grid state and visualization helpers
 
-**File:** [`../board.py`](../board.py)
+**File:** [`../../gol/board.py`](../../gol/board.py)
 
 The `Board` class is the **single source of truth** for the cellular automaton state on a finite `size × size` grid. It maintains redundant representations for convenience and consistency checking.
 

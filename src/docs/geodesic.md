@@ -1,6 +1,6 @@
 # Geodesic sphere topology
 
-**Files:** [`../geodesic_mesh.py`](../geodesic_mesh.py), [`../geodesic_board.py`](../geodesic_board.py), [`../ui/sphere_renderer.py`](../ui/sphere_renderer.py)
+**Files:** [`../../gol/geodesic_mesh.py`](../../gol/geodesic_mesh.py), [`../../gol/geodesic_board.py`](../../gol/geodesic_board.py), [`../../gol/ui/sphere_renderer.py`](../../gol/ui/sphere_renderer.py)
 
 Sphere mode runs Conway's Game of Life on a **geodesic Goldberg polyhedron** — a class-I icosahedral subdivision projected onto the unit sphere. Cells are mesh vertices; neighbors are fixed by mesh adjacency (degree 5 or 6).
 
@@ -76,8 +76,8 @@ Drawn into the same `grid_rect` as the flat grid:
 `game.make_game(topology=Topology.SPHERE, frequency=8, ...)` builds a `GeodesicBoard` with `rule_set=None`.
 
 ```python
-from topology import Topology
-from game import make_game
+from gol.topology import Topology
+from gol.game import make_game
 
 game = make_game(Topology.SPHERE, frequency=8, max_iter=500, rand_rate=0.3)
 game.initialize_board()

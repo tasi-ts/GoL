@@ -1,6 +1,6 @@
 # Conway's Game of Life
 
-Active implementation under `src/`: a finite-grid simulator for [Conway's Game of Life](src/docs/conways-game-of-life.md) with a **real-time UI** powered by [pygame-ce](https://github.com/pygame-community/pygame-ce). The frozen reference copy lives in [`src/legacy/`](src/legacy/).
+Active implementation is the `gol` package: a finite-grid simulator for [Conway's Game of Life](src/docs/conways-game-of-life.md) with a **real-time UI** powered by [pygame-ce](https://github.com/pygame-community/pygame-ce). The frozen reference copy lives in [`src/legacy/`](src/legacy/).
 
 ## Project summary
 
@@ -13,16 +13,16 @@ The program models cells that are either **alive** (1) or **dead** (0). On each 
 
 | Module | Role |
 |--------|------|
-| [`board.py`](src/board.py) | `FlatBoard` grid state (alias `Board`); live-cell set, seeding |
-| [`geodesic_board.py`](src/geodesic_board.py) | Sphere board on geodesic mesh |
-| [`geodesic_mesh.py`](src/geodesic_mesh.py) | Icosahedral subdivision, adjacency, render polygons |
-| [`topology.py`](src/topology.py) | `Topology` enum: Bounded / Toroidal / Sphere |
-| [`rules.py`](src/rules.py) | 4- or 8-connected neighborhood; bounded or toroidal (flat only) |
-| [`game.py`](src/game.py) | Conway logic, `step()`, `make_game()` factory |
-| [`ui/pygame_app.py`](src/ui/pygame_app.py) | Real-time display, input, panel layout |
-| [`ui/sphere_renderer.py`](src/ui/sphere_renderer.py) | 3D sphere view for geodesic mode |
+| [`board.py`](gol/board.py) | `FlatBoard` grid state (alias `Board`); live-cell set, seeding |
+| [`geodesic_board.py`](gol/geodesic_board.py) | Sphere board on geodesic mesh |
+| [`geodesic_mesh.py`](gol/geodesic_mesh.py) | Icosahedral subdivision, adjacency, render polygons |
+| [`topology.py`](gol/topology.py) | `Topology` enum: Bounded / Toroidal / Sphere |
+| [`rules.py`](gol/rules.py) | 4- or 8-connected neighborhood; bounded or toroidal (flat only) |
+| [`game.py`](gol/game.py) | Conway logic, `step()`, `make_game()` factory |
+| [`ui/pygame_app.py`](gol/ui/pygame_app.py) | Real-time display, input, panel layout |
+| [`ui/sphere_renderer.py`](gol/ui/sphere_renderer.py) | 3D sphere view for geodesic mode |
 
-Dependencies: [`requirements.txt`](requirements.txt) (`matplotlib`, `numpy`, `pygame-ce`). UI code uses `import pygame` (pygame-ce is a drop-in replacement).
+Dependencies are declared in [`pyproject.toml`](pyproject.toml) (`matplotlib`, `numpy`, `pygame-ce`). UI code uses `import pygame` (pygame-ce is a drop-in replacement).
 
 ## Documentation index
 
@@ -35,13 +35,11 @@ Dependencies: [`requirements.txt`](requirements.txt) (`matplotlib`, `numpy`, `py
 
 ## Running (pygame-ce — default)
 
-```powershell
-cd c:\Source\GoL
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-
-cd src
-..\..venv\Scripts\python.exe game.py
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+pip install -e .
+gol                                # or: python -m gol
 ```
 
 Opens **paused** on a setup screen. Adjust **board size** (or **frequency** in Sphere mode), **neighborhood** (4/8, flat only), **topology** (Bounded / Toroidal / Sphere), **max generations**, and **random rate** with **+/-** buttons (or mouse), then click **Start** or press **Enter**. Those settings lock once the run begins. Default **FPS cap: 15**.
@@ -73,9 +71,9 @@ Default values: **64×64** board, **8-neighbor** neighborhood, **Bounded** topol
 ## Batch mode (console, no window)
 
 ```python
-from board import Board
-from game import GameOfLife
-from rules import Rules
+from gol.board import Board
+from gol.game import GameOfLife
+from gol.rules import Rules
 
 game = GameOfLife(Board(64), Rules(8, 64), max_iter=100, rand_rate=0.5)
 game.run_simulation(verbose=True)

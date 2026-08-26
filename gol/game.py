@@ -1,8 +1,8 @@
 import copy
 
-from board import FlatBoard
-from geodesic_board import GeodesicBoard
-from rules import Rules
+from .board import FlatBoard
+from .geodesic_board import GeodesicBoard
+from .rules import Rules
 
 MAX_DETECTED_PERIOD = 6
 
@@ -116,7 +116,7 @@ def make_game(
     rand_rate=0.5,
 ):
     """Factory for flat or geodesic games."""
-    from topology import Topology
+    from .topology import Topology
 
     if topology == Topology.SPHERE:
         board = GeodesicBoard(frequency)
@@ -132,7 +132,7 @@ def make_game(
 
 
 def main():
-    from ui.pygame_app import run_pygame_app
+    from .ui.pygame_app import run_pygame_app
 
     run_pygame_app(
         board_size=64,

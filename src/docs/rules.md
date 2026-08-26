@@ -1,6 +1,6 @@
 # `rules.py` — Neighborhood and grid bounds
 
-**File:** [`../rules.py`](../rules.py)
+**File:** [`../../gol/rules.py`](../../gol/rules.py)
 
 The `Rules` class does **not** encode Conway's birth/survival logic. It only defines **which adjacent cells count as neighbors** for a coordinate on a **square grid** of a given `size`, with either **bounded** (hard edges) or **toroidal** (wrap-around) topology. Conway's B3/S23 rules are applied in `game.py` after neighbor counts are computed.
 

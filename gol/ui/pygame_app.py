@@ -1,9 +1,9 @@
 import pygame
 
-from game import make_game
-from geodesic_mesh import GeodesicMesh
-from topology import Topology
-from ui.sphere_renderer import SphereRenderer
+from ..game import make_game
+from ..geodesic_mesh import GeodesicMesh
+from ..topology import Topology
+from .sphere_renderer import SphereRenderer
 
 
 # Layout: grid on the left, side panel for stats and controls.

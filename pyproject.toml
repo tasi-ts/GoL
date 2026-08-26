@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gol"
+version = "0.1.0"
+description = "Conway's Game of Life with bounded, toroidal, and geodesic sphere topologies"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "pygame-ce>=2.5.0",
+]
+
+[project.scripts]
+gol = "gol.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["gol*"]
