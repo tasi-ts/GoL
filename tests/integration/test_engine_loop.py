@@ -72,6 +72,14 @@ def test_make_game_then_random_initialize_then_step():
     assert game.board.area == len(game.board.live_cells)
 
 
+def test_make_game_seed_is_reproducible():
+    first = make_game(Topology.BOUNDED, board_size=16, rand_rate=0.4, seed=99)
+    second = make_game(Topology.BOUNDED, board_size=16, rand_rate=0.4, seed=99)
+    first.initialize_board()
+    second.initialize_board()
+    assert first.board.live_cells == second.board.live_cells
+
+
 def test_sphere_random_run_stays_within_mesh():
     game = make_game(Topology.SPHERE, frequency=2, max_iter=8, rand_rate=0.5)
     game.initialize_board()

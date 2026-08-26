@@ -120,7 +120,7 @@ def test_rand_rate_zero_skips_random_fill():
 def test_rand_rate_truthy_seeds_random_cells():
     rules = Rules(8, 10)
     board = FlatBoard(10, rules=rules)
-    game = GameOfLife(board, rule_set=rules, max_iter=5, rand_rate=0.3)
+    game = GameOfLife(board, rule_set=rules, max_iter=5, rand_rate=0.3, seed=0)
     game.initialize_board()
     assert game.board.area == 30
 

@@ -1,6 +1,6 @@
 """Canonical Life patterns and board/game builders for characterization tests.
 
-Coordinates are (row, column), matching ``FlatBoard.array[x][y]``.
+Coordinates are (row, column) pairs in ``FlatBoard.live_cells``.
 """
 
 from gol.board import FlatBoard

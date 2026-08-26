@@ -1,5 +1,4 @@
 import copy
-import random
 
 import pytest
 
@@ -33,17 +32,23 @@ def test_add_object_sets_area():
 
 
 def test_add_random_coords_default_rate_is_half():
-    random.seed(0)
     board = GeodesicBoard(2)
-    board.add_random_coords()
+    board.add_random_coords(seed=0)
     assert board.area == 21
 
 
 def test_add_random_coords_honors_rate():
-    random.seed(1)
     board = GeodesicBoard(2)
-    board.add_random_coords(rate=0.25)
+    board.add_random_coords(rate=0.25, seed=1)
     assert board.area == 10
+
+
+def test_same_seed_reproduces_live_cells():
+    first = GeodesicBoard(2)
+    second = GeodesicBoard(2)
+    first.add_random_coords(rate=0.5, seed=7)
+    second.add_random_coords(rate=0.5, seed=7)
+    assert first.live_cells == second.live_cells
 
 
 def test_neighbors_come_from_mesh():
