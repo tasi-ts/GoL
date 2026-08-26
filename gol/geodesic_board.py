@@ -1,7 +1,7 @@
 import copy
 import random
 
-from geodesic_mesh import GeodesicMesh
+from .geodesic_mesh import GeodesicMesh
 
 
 class GeodesicBoard:

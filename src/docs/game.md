@@ -1,17 +1,17 @@
 # `game.py` — Simulation engine and entry point
 
-**File:** [`../game.py`](../game.py)
+**File:** [`../../gol/game.py`](../../gol/game.py)
 
 The `GameOfLife` class ties `Board` and `Rules` together: it applies **Conway's B3/S23 rules** each generation, records history, detects simple repetition, and drives the default **matplotlib** playback in `main()`.
 
 ## Imports
 
 ```python
-from board import Board
-from rules import Rules
+from gol.board import Board
+from gol.rules import Rules
 ```
 
-Sibling imports require running `game.py` with `src/legacy` on the module path (see [README](README.md#running-the-simulation)).
+Import as `gol.game` after `pip install -e .` (see [README](../../README.md#running-pygame-ce--default)).
 
 ## Class: `GameOfLife`
 
@@ -121,7 +121,7 @@ With default `rand_rate=0.5`, seeding always runs. Setting `rand_rate=0` skips r
 
 ## `main()` — Pygame entry
 
-Delegates to [`ui/pygame_app.py`](../ui/pygame_app.py) `run_pygame_app()` (real-time window). See [Pygame UI](ui.md).
+Delegates to [`ui/pygame_app.py`](../../gol/ui/pygame_app.py) `run_pygame_app()` (real-time window). See [Pygame UI](ui.md).
 
 ```python
 if __name__ == "__main__":
