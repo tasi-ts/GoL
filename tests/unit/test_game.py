@@ -1,7 +1,7 @@
 import pytest
 
 from gol.board import FlatBoard
-from gol.game import MAX_DETECTED_PERIOD, GameOfLife
+from gol.game import BIRTH, MAX_DETECTED_PERIOD, SURVIVE, GameOfLife
 from gol.geodesic_board import GeodesicBoard
 from gol.rules import Rules
 from tests.helpers import (
@@ -100,8 +100,8 @@ def test_step_back_restores_previous_generation():
 
 
 def test_step_back_after_still_life_stop_stays_at_start():
-    # step() appends the current board when a period is detected, so the
-    # equal-board skip in step_back() drains sequence back to the initial state.
+    # After a still-life stop, history's last snapshot equals the current
+    # board, so step_back() drains history and reports already-at-start.
     game = seed_flat_game(BLOCK, size=6)
     assert game.step() is False
     assert game.step_back() is False
@@ -117,6 +117,14 @@ def test_rand_rate_zero_skips_random_fill():
     assert game.board.area == 0
 
 
+def test_rand_rate_float_zero_skips_random_fill():
+    rules = Rules(8, 6)
+    board = FlatBoard(6, rules=rules)
+    game = GameOfLife(board, rule_set=rules, max_iter=5, rand_rate=0.0)
+    game.initialize_board()
+    assert game.board.live_cells == set()
+
+
 def test_rand_rate_truthy_seeds_random_cells():
     rules = Rules(8, 10)
     board = FlatBoard(10, rules=rules)
@@ -125,8 +133,21 @@ def test_rand_rate_truthy_seeds_random_cells():
     assert game.board.area == 30
 
 
+def test_birth_and_survive_are_b3_s23():
+    assert BIRTH == frozenset({3})
+    assert SURVIVE == frozenset({2, 3})
+
+
 def test_max_detected_period_is_six():
     assert MAX_DETECTED_PERIOD == 6
+
+
+def test_period_window_is_capped_history_is_not():
+    game = seed_flat_game(GLIDER, size=32, max_iter=20)
+    for _ in range(10):
+        assert game.step() is True
+    assert len(game.sequence) == 10
+    assert len(game._period_window) == MAX_DETECTED_PERIOD
 
 
 def test_sphere_still_life_single_isolated_cell_dies():
