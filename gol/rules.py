@@ -8,7 +8,6 @@ class Rules:
         self.neighborhood = neighborhood
         self.size = size
         self.toroidal = toroidal
-        self.neighbors = set()
 
     @property
     def neighborhood(self):
@@ -40,13 +39,14 @@ class Rules:
             raise ValueError("--- Toroidal must be True or False! ---")
         self._toroidal = value
 
-    def calc_neighbors(self, x, y):
-        self.neighbors = set()
+    def neighbors(self, x, y):
+        """Return neighbor coordinates. Does not mutate instance state."""
+        result = set()
         if not (0 <= x < self.size and 0 <= y < self.size):
-            return
-        offsets = list(CORE_OFFSETS)
+            return result
+        offsets = CORE_OFFSETS
         if self.neighborhood == 8:
-            offsets.extend(DIAG_OFFSETS)
+            offsets = CORE_OFFSETS + DIAG_OFFSETS
         for dx, dy in offsets:
             nx, ny = x + dx, y + dy
             if self.toroidal:
@@ -54,4 +54,5 @@ class Rules:
                 ny %= self.size
             elif not (0 <= nx < self.size and 0 <= ny < self.size):
                 continue
-            self.neighbors.add((nx, ny))
+            result.add((nx, ny))
+        return result

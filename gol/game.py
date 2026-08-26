@@ -1,10 +1,12 @@
-import copy
+from collections import deque
 
 from .board import FlatBoard
 from .geodesic_board import GeodesicBoard
 from .rules import Rules
 
 MAX_DETECTED_PERIOD = 6
+BIRTH = frozenset({3})
+SURVIVE = frozenset({2, 3})
 
 
 class GameOfLife:
@@ -19,70 +21,92 @@ class GameOfLife:
         self.max_iter = max_iter
         self.rand_rate = rand_rate
         self.seed = seed
-        self.sequence = []
-        self._initial_board = None
+        self._history = []
+        self._period_window = deque(maxlen=MAX_DETECTED_PERIOD)
+        self._initial_live = frozenset()
 
-    def check_area(self, board, cell):
-        summa = 0
-        dead_cells = set()
-        for neighbor in board.neighbors(cell):
-            if board.is_alive(neighbor):
-                summa += 1
+    @property
+    def sequence(self):
+        """Previous-generation live-cell snapshots (for tests and scrubbing)."""
+        return self._history
+
+    def _neighbor_stats(self, live, cell):
+        live_count = 0
+        dead_neighbors = set()
+        for neighbor in self.board.neighbors(cell):
+            if neighbor in live:
+                live_count += 1
             else:
-                dead_cells.add(neighbor)
-        return summa, dead_cells
+                dead_neighbors.add(neighbor)
+        return live_count, dead_neighbors
+
+    def _restore_live(self, live):
+        self.board.cells.clear()
+        self.board.cells.update(live)
+
+    def _record_snapshot(self, live):
+        snapshot = frozenset(live)
+        self._history.append(snapshot)
+        self._period_window.append(snapshot)
 
     def advance_board(self):
-        old_board = copy.deepcopy(self.board)
-        for cell in old_board.live_cells:
-            summa, dead_cells = self.check_area(old_board, cell)
-            if summa < 2 and old_board.is_alive(cell):
-                self.board.set_alive(cell, False)
-            if summa > 3 and old_board.is_alive(cell):
-                self.board.set_alive(cell, False)
-            for neighbor in dead_cells:
-                n_summa, _ = self.check_area(old_board, neighbor)
-                if n_summa == 3 and not old_board.is_alive(neighbor):
-                    self.board.set_alive(neighbor, True)
-        self.sequence.append(old_board)
-        self.board.calc_area()
+        old_live = set(self.board.live_cells)
+        deaths = set()
+        birth_candidates = set()
+        for cell in old_live:
+            live_count, dead_neighbors = self._neighbor_stats(old_live, cell)
+            if live_count not in SURVIVE:
+                deaths.add(cell)
+            birth_candidates.update(dead_neighbors)
 
-    def _boards_equal(self, board_a, board_b):
-        return board_a.live_cells == board_b.live_cells
+        births = set()
+        for cell in birth_candidates:
+            live_count, _ = self._neighbor_stats(old_live, cell)
+            if live_count in BIRTH:
+                births.add(cell)
+
+        for cell in deaths:
+            self.board.set_alive(cell, False)
+        for cell in births:
+            self.board.set_alive(cell, True)
+        self._record_snapshot(old_live)
 
     def check_if_changed(self):
+        current = self.board.live_cells
         for period in range(1, MAX_DETECTED_PERIOD + 1):
-            if len(self.sequence) >= period:
-                if self._boards_equal(self.board, self.sequence[-period]):
+            if len(self._period_window) >= period:
+                if current == self._period_window[-period]:
                     return False
         return True
 
     def initialize_board(self):
-        if self.rand_rate:
+        if self.rand_rate > 0:
             self.board.add_random_coords(rate=self.rand_rate, seed=self.seed)
-        self.board.calc_area()
-        self._initial_board = copy.deepcopy(self.board)
-        self.sequence = []
+        self._initial_live = frozenset(self.board.live_cells)
+        self._history = []
+        self._period_window = deque(maxlen=MAX_DETECTED_PERIOD)
 
     def step_back(self):
         """Restore the previous generation. Returns False if already at the start."""
-        while self.sequence and self._boards_equal(self.board, self.sequence[-1]):
-            self.sequence.pop()
-        if self.sequence:
-            self.board = copy.deepcopy(self.sequence.pop())
-            self.board.calc_area()
+        while self._history and self.board.live_cells == self._history[-1]:
+            self._history.pop()
+        if self._history:
+            self._restore_live(self._history.pop())
+            self._period_window = deque(
+                self._history[-MAX_DETECTED_PERIOD:], maxlen=MAX_DETECTED_PERIOD
+            )
             return True
-        if self._boards_equal(self.board, self._initial_board):
+        if self.board.live_cells == self._initial_live:
+            self._period_window = deque(maxlen=MAX_DETECTED_PERIOD)
             return False
-        self.board = copy.deepcopy(self._initial_board)
-        self.board.calc_area()
+        self._restore_live(self._initial_live)
+        self._period_window = deque(maxlen=MAX_DETECTED_PERIOD)
         return True
 
     def step(self):
         """Advance one generation. Returns False when the run should stop."""
         self.advance_board()
         if not self.check_if_changed():
-            self.sequence.append(self.board)
             return False
         return True
 

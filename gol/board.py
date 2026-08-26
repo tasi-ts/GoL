@@ -67,8 +67,7 @@ class FlatBoard:
         if self.rules is None:
             raise RuntimeError("FlatBoard requires Rules for neighbor lookup")
         x, y = cell
-        self.rules.calc_neighbors(x, y)
-        return self.rules.neighbors
+        return self.rules.neighbors(x, y)
 
     def print_cells(self):
         print(self.cells, end="\n\n")
