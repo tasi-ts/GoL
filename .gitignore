@@ -20,6 +20,7 @@ dist/
 .coverage
 htmlcov/
 .mypy_cache/
+.ruff_cache/
 
 # Environment and secrets
 .env

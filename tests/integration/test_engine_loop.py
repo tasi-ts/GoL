@@ -1,7 +1,7 @@
 import pytest
 
 from gol.board import FlatBoard
-from gol.game import GameOfLife, make_game
+from gol.game import make_game
 from gol.geodesic_board import GeodesicBoard
 from gol.topology import Topology
 from tests.helpers import BLOCK, GLIDER, seed_flat_game

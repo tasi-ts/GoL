@@ -1,4 +1,3 @@
-import copy
 import random
 
 from .geodesic_mesh import GeodesicMesh
