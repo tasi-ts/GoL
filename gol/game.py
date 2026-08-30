@@ -148,6 +148,15 @@ class GameOfLife(Generic[CellT]):
                 print("- Stopped at max iteration {0}.".format(self.max_iter))
 
 
+def apply_pattern(game: GameOfLife[Any], cells: Iterable[Any]) -> None:
+    """Place cells after ``initialize_board`` with ``rand_rate=0``.
+
+    Updates the scrub origin so Left at generation 0 keeps the pattern.
+    """
+    game.board.add_object(cells)
+    game._initial_live = frozenset(game.board.live_cells)
+
+
 def make_game(
     topology: Topology,
     board_size: int = 64,
@@ -182,14 +191,9 @@ def make_game(
 
 
 def main() -> None:
-    from .ui.pygame_app import run_pygame_app
+    from .cli import main as cli_main
 
-    run_pygame_app(
-        board_size=64,
-        neighborhood=8,
-        max_iter=2500,
-        rand_rate=0.50,
-    )
+    cli_main()
 
 
 if __name__ == "__main__":

@@ -67,6 +67,7 @@ module = [
     "gol.topology",
     "gol.seeding",
     "gol.types",
+    "gol.patterns",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true

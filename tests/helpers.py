@@ -1,52 +1,31 @@
 """Canonical Life patterns and board/game builders for characterization tests.
 
-Coordinates are (row, column) pairs in ``FlatBoard.live_cells``.
-Diagrams: rows increase downward, columns right; ``O`` is live, ``.`` is dead.
-Axis numbers are those coordinates (not a 0-based crop of the pattern).
+Pattern coordinates live in ``gol.patterns`` (single source of truth).
 """
 
 from gol.board import FlatBoard
 from gol.game import GameOfLife
 from gol.geodesic_board import GeodesicBoard
+from gol.patterns import (
+    BEEHIVE,
+    BLINKER_H,
+    BLINKER_V,
+    BLOCK,
+    GLIDER,
+    TOAD_A,
+)
 from gol.rules import Rules
 
-# Still lifes
-#
-#       1 2
-#    1  O O
-#    2  O O
-BLOCK = frozenset({(1, 1), (1, 2), (2, 1), (2, 2)})
-#
-#       1 2 3 4
-#    1  . O O .
-#    2  O . . O
-#    3  . O O .
-BEEHIVE = frozenset({(1, 2), (1, 3), (2, 1), (2, 4), (3, 2), (3, 3)})
-
-# Oscillators (Moore neighborhood)
-#
-#       3
-#    2  O
-#    3  O
-#    4  O
-BLINKER_V = frozenset({(2, 3), (3, 3), (4, 3)})
-#
-#       2 3 4
-#    3  O O O
-BLINKER_H = frozenset({(3, 2), (3, 3), (3, 4)})
-#
-#       1 2 3 4
-#    2  . O O O
-#    3  O O O .
-TOAD_A = frozenset({(2, 2), (2, 3), (2, 4), (3, 1), (3, 2), (3, 3)})
-
-# Spaceship (Moore neighborhood)
-#
-#       1 2 3
-#    1  . O .
-#    2  . . O
-#    3  O O O
-GLIDER = frozenset({(1, 2), (2, 3), (3, 1), (3, 2), (3, 3)})
+__all__ = [
+    "BEEHIVE",
+    "BLINKER_H",
+    "BLINKER_V",
+    "BLOCK",
+    "GLIDER",
+    "TOAD_A",
+    "seed_flat_game",
+    "seed_sphere_game",
+]
 
 
 def seed_flat_game(
