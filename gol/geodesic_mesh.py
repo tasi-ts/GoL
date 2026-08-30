@@ -3,11 +3,14 @@
 import math
 
 import numpy as np
+from numpy.typing import NDArray
 
 PHI = (1.0 + math.sqrt(5.0)) / 2.0
 
+Float64Array = NDArray[np.float64]
+
 # Icosahedron vertices (before normalization).
-_ICO_VERTS = np.array(
+_ICO_VERTS: Float64Array = np.array(
     [
         (-1, PHI, 0),
         (1, PHI, 0),
@@ -26,7 +29,7 @@ _ICO_VERTS = np.array(
 )
 
 # 20 triangular faces (vertex indices).
-_ICO_FACES = [
+_ICO_FACES: list[tuple[int, int, int]] = [
     (0, 11, 5),
     (0, 5, 1),
     (0, 1, 7),
@@ -50,13 +53,13 @@ _ICO_FACES = [
 ]
 
 
-def _normalize(vectors):
+def _normalize(vectors: Float64Array) -> Float64Array:
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
     return vectors / norms
 
 
-def _edge_key(a, b):
+def _edge_key(a: int, b: int) -> tuple[int, int]:
     return (a, b) if a < b else (b, a)
 
 
@@ -67,7 +70,7 @@ class GeodesicMesh:
     Cell count: 10 * nu^2 + 2.
     """
 
-    def __init__(self, frequency):
+    def __init__(self, frequency: int) -> None:
         if frequency < 1:
             raise ValueError("frequency must be >= 1")
         self.frequency = frequency
@@ -80,25 +83,38 @@ class GeodesicMesh:
         self.cell_centers = self.vertices.copy()
 
     @staticmethod
-    def expected_cell_count(frequency):
+    def expected_cell_count(frequency: int) -> int:
         return 10 * frequency * frequency + 2
 
-    def _subdivide_icosahedron(self, nu):
+    def _subdivide_icosahedron(
+        self, nu: int
+    ) -> tuple[Float64Array, list[tuple[int, int, int]]]:
         base = _normalize(_ICO_VERTS.copy())
-        vertex_map = {}
-        vertices = []
+        vertex_map: dict[tuple[tuple[int, int], ...], int] = {}
+        vertices: list[Float64Array] = []
 
-        def canonical_key(ia, ib, ic, i, j):
+        def canonical_key(
+            ia: int, ib: int, ic: int, i: int, j: int
+        ) -> tuple[tuple[int, int], ...]:
             qa = nu - i - j
             qb = i
             qc = j
-            parts = []
+            parts: list[tuple[int, int]] = []
             for ico_v, weight in ((ia, qa), (ib, qb), (ic, qc)):
                 if weight > 0:
                     parts.append((ico_v, weight))
             return tuple(sorted(parts))
 
-        def get_vertex(ia, ib, ic, i, j, va, vb, vc):
+        def get_vertex(
+            ia: int,
+            ib: int,
+            ic: int,
+            i: int,
+            j: int,
+            va: Float64Array,
+            vb: Float64Array,
+            vc: Float64Array,
+        ) -> int:
             key = canonical_key(ia, ib, ic, i, j)
             if key not in vertex_map:
                 w_a = (nu - i - j) / nu
@@ -109,7 +125,7 @@ class GeodesicMesh:
                 vertices.append(point)
             return vertex_map[key]
 
-        faces = []
+        faces: list[tuple[int, int, int]] = []
         for ia, ib, ic in _ICO_FACES:
             va, vb, vc = base[ia], base[ib], base[ic]
             grid = [
@@ -131,17 +147,19 @@ class GeodesicMesh:
 
         return np.array(vertices, dtype=np.float64), faces
 
-    def _build_adjacency(self):
-        adjacency = [set() for _ in range(self.cell_count)]
+    def _build_adjacency(self) -> list[set[int]]:
+        adjacency: list[set[int]] = [set() for _ in range(self.cell_count)]
         for ia, ib, ic in self.faces:
             for a, b in ((ia, ib), (ib, ic), (ic, ia)):
                 adjacency[a].add(b)
                 adjacency[b].add(a)
         return adjacency
 
-    def _build_cell_polygons(self):
+    def _build_cell_polygons(self) -> list[list[Float64Array]]:
         # For each vertex, collect incident triangle centroids in cyclic order.
-        edge_to_triangles = {}
+        edge_to_triangles: dict[
+            tuple[int, int], list[tuple[int, Float64Array, int, int]]
+        ] = {}
         for tri_idx, (ia, ib, ic) in enumerate(self.faces):
             centroid = _normalize(
                 np.array(
@@ -156,10 +174,10 @@ class GeodesicMesh:
                 key = _edge_key(a, b)
                 edge_to_triangles.setdefault(key, []).append((tri_idx, centroid, a, b))
 
-        polygons = []
+        polygons: list[list[Float64Array]] = []
         for vid in range(self.cell_count):
-            incident = []
-            seen_tris = set()
+            incident: list[tuple[int, Float64Array]] = []
+            seen_tris: set[int] = set()
             for neighbor in self.adjacency[vid]:
                 key = _edge_key(vid, neighbor)
                 for tri_idx, centroid, a, b in edge_to_triangles.get(key, []):
@@ -181,7 +199,7 @@ class GeodesicMesh:
             axis = center / np.linalg.norm(center)
             perp = np.cross(axis, ref)
 
-            def angle(item):
+            def angle(item: tuple[int, Float64Array]) -> float:
                 _, pt = item
                 vec = pt - center
                 vec = vec - np.dot(vec, center) * center

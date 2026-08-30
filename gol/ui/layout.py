@@ -41,7 +41,9 @@ CONFIG_PAD = 16
 START_BUTTON_H = 36
 
 
-def compute_initial_window_size(is_sphere, board_size):
+def compute_initial_window_size(
+    is_sphere: bool, board_size: int
+) -> tuple[int, int]:
     """One-time startup sizing to match pre-resize defaults."""
     if is_sphere:
         grid_pixels = min(WINDOW_HEIGHT - 40, 520)
