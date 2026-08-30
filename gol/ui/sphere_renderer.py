@@ -11,11 +11,11 @@ class SphereRenderer:
 
     def __init__(
         self,
-        color_alive=COLOR_ALIVE,
-        color_dead=COLOR_DEAD,
-        color_edge=COLOR_GRID_LINE,
-        color_accent=COLOR_ACCENT,
-    ):
+        color_alive: tuple[int, int, int] = COLOR_ALIVE,
+        color_dead: tuple[int, int, int] = COLOR_DEAD,
+        color_edge: tuple[int, int, int] = COLOR_GRID_LINE,
+        color_accent: tuple[int, int, int] = COLOR_ACCENT,
+    ) -> None:
         self.color_alive = color_alive
         self.color_dead = color_dead
         self.color_edge = color_edge

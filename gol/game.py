@@ -1,18 +1,27 @@
 from collections import deque
+from collections.abc import Iterable
+from typing import Any, Generic
 
-from .board import FlatBoard
+from .board import BoardProtocol, FlatBoard
 from .geodesic_board import GeodesicBoard
 from .rules import Rules
+from .topology import Topology
+from .types import CellT
 
 MAX_DETECTED_PERIOD = 6
 BIRTH = frozenset({3})
 SURVIVE = frozenset({2, 3})
 
 
-class GameOfLife:
+class GameOfLife(Generic[CellT]):
 
     def __init__(
-        self, init_board, rule_set=None, max_iter=2500, rand_rate=0.5, seed=None
+        self,
+        init_board: BoardProtocol[CellT],
+        rule_set: Rules | None = None,
+        max_iter: int = 2500,
+        rand_rate: float = 0.5,
+        seed: int | None = None,
     ) -> None:
         self.board = init_board
         if isinstance(init_board, FlatBoard) and rule_set is not None:
@@ -21,18 +30,22 @@ class GameOfLife:
         self.max_iter = max_iter
         self.rand_rate = rand_rate
         self.seed = seed
-        self._history = []
-        self._period_window = deque(maxlen=MAX_DETECTED_PERIOD)
-        self._initial_live = frozenset()
+        self._history: list[frozenset[CellT]] = []
+        self._period_window: deque[frozenset[CellT]] = deque(
+            maxlen=MAX_DETECTED_PERIOD
+        )
+        self._initial_live: frozenset[CellT] = frozenset()
 
     @property
-    def sequence(self):
+    def sequence(self) -> list[frozenset[CellT]]:
         """Previous-generation live-cell snapshots (for tests and scrubbing)."""
         return self._history
 
-    def _neighbor_stats(self, live, cell):
+    def _neighbor_stats(
+        self, live: set[CellT], cell: CellT
+    ) -> tuple[int, set[CellT]]:
         live_count = 0
-        dead_neighbors = set()
+        dead_neighbors: set[CellT] = set()
         for neighbor in self.board.neighbors(cell):
             if neighbor in live:
                 live_count += 1
@@ -40,26 +53,26 @@ class GameOfLife:
                 dead_neighbors.add(neighbor)
         return live_count, dead_neighbors
 
-    def _restore_live(self, live):
+    def _restore_live(self, live: Iterable[CellT]) -> None:
         self.board.cells.clear()
         self.board.cells.update(live)
 
-    def _record_snapshot(self, live):
+    def _record_snapshot(self, live: set[CellT]) -> None:
         snapshot = frozenset(live)
         self._history.append(snapshot)
         self._period_window.append(snapshot)
 
-    def advance_board(self):
+    def advance_board(self) -> None:
         old_live = set(self.board.live_cells)
-        deaths = set()
-        birth_candidates = set()
+        deaths: set[CellT] = set()
+        birth_candidates: set[CellT] = set()
         for cell in old_live:
             live_count, dead_neighbors = self._neighbor_stats(old_live, cell)
             if live_count not in SURVIVE:
                 deaths.add(cell)
             birth_candidates.update(dead_neighbors)
 
-        births = set()
+        births: set[CellT] = set()
         for cell in birth_candidates:
             live_count, _ = self._neighbor_stats(old_live, cell)
             if live_count in BIRTH:
@@ -71,7 +84,7 @@ class GameOfLife:
             self.board.set_alive(cell, True)
         self._record_snapshot(old_live)
 
-    def check_if_changed(self):
+    def check_if_changed(self) -> bool:
         current = self.board.live_cells
         for period in range(1, MAX_DETECTED_PERIOD + 1):
             if len(self._period_window) >= period:
@@ -79,14 +92,14 @@ class GameOfLife:
                     return False
         return True
 
-    def initialize_board(self):
+    def initialize_board(self) -> None:
         if self.rand_rate > 0:
             self.board.add_random_coords(rate=self.rand_rate, seed=self.seed)
         self._initial_live = frozenset(self.board.live_cells)
         self._history = []
         self._period_window = deque(maxlen=MAX_DETECTED_PERIOD)
 
-    def step_back(self):
+    def step_back(self) -> bool:
         """Restore the previous generation. Returns False if already at the start."""
         while self._history and self.board.live_cells == self._history[-1]:
             self._history.pop()
@@ -103,18 +116,19 @@ class GameOfLife:
         self._period_window = deque(maxlen=MAX_DETECTED_PERIOD)
         return True
 
-    def step(self):
+    def step(self) -> bool:
         """Advance one generation. Returns False when the run should stop."""
         self.advance_board()
         if not self.check_if_changed():
             return False
         return True
 
-    def run_simulation(self, verbose=True):
+    def run_simulation(self, verbose: bool = True) -> None:
         self.initialize_board()
         if verbose:
-            if hasattr(self.board, "print_board"):
-                self.board.print_board()
+            print_board = getattr(self.board, "print_board", None)
+            if callable(print_board):
+                print_board()
             self.board.print_area()
         for i in range(self.max_iter):
             if not self.step():
@@ -135,21 +149,22 @@ class GameOfLife:
 
 
 def make_game(
-    topology,
-    board_size=64,
-    frequency=8,
-    neighborhood=8,
-    max_iter=2500,
-    rand_rate=0.5,
-    seed=None,
-):
+    topology: Topology,
+    board_size: int = 64,
+    frequency: int = 8,
+    neighborhood: int = 8,
+    max_iter: int = 2500,
+    rand_rate: float = 0.5,
+    seed: int | None = None,
+) -> GameOfLife[Any]:
     """Factory for flat or geodesic games."""
-    from .topology import Topology
-
     if topology == Topology.SPHERE:
-        board = GeodesicBoard(frequency)
         return GameOfLife(
-            board, rule_set=None, max_iter=max_iter, rand_rate=rand_rate, seed=seed
+            GeodesicBoard(frequency),
+            rule_set=None,
+            max_iter=max_iter,
+            rand_rate=rand_rate,
+            seed=seed,
         )
 
     rules = Rules(
@@ -157,13 +172,16 @@ def make_game(
         board_size,
         toroidal=(topology == Topology.TOROIDAL),
     )
-    board = FlatBoard(board_size, rules=rules)
     return GameOfLife(
-        board, rule_set=rules, max_iter=max_iter, rand_rate=rand_rate, seed=seed
+        FlatBoard(board_size, rules=rules),
+        rule_set=rules,
+        max_iter=max_iter,
+        rand_rate=rand_rate,
+        seed=seed,
     )
 
 
-def main():
+def main() -> None:
     from .ui.pygame_app import run_pygame_app
 
     run_pygame_app(

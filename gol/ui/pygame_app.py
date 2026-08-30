@@ -1,3 +1,5 @@
+from typing import Any
+
 import pygame
 
 from ..game import make_game
@@ -34,7 +36,7 @@ from .sphere_renderer import SphereRenderer
 _FONT_CANDIDATES = ("consolas", "menlo", "dejavu sans mono", "courier new")
 
 
-def load_ui_font(size, bold=False):
+def load_ui_font(size: int, bold: bool = False) -> pygame.font.Font:
     """Load a monospace UI font, falling back if Consolas is missing."""
     for name in _FONT_CANDIDATES:
         if pygame.font.match_font(name) is not None:
@@ -46,15 +48,15 @@ class PygameApp(object):
 
     def __init__(
         self,
-        board_size=64,
-        neighborhood=8,
-        max_iter=2500,
-        rand_rate=0.5,
-        toroidal=False,
-        topology=None,
-        frequency=8,
-        fps=DEFAULT_FPS,
-    ):
+        board_size: int = 64,
+        neighborhood: int = 8,
+        max_iter: int = 2500,
+        rand_rate: float = 0.5,
+        toroidal: bool = False,
+        topology: Topology | None = None,
+        frequency: int = 8,
+        fps: int = DEFAULT_FPS,
+    ) -> None:
         self.board_size = board_size
         self.frequency = frequency
         self.neighborhood = neighborhood
@@ -74,7 +76,7 @@ class PygameApp(object):
         self._running = True
         self._finished = False
 
-        self._config_buttons = []
+        self._config_buttons: list[dict[str, Any]] = []
         self._start_button_rect = None
         self.sphere_renderer = SphereRenderer(
             color_alive=COLOR_ALIVE,
@@ -342,15 +344,15 @@ class PygameApp(object):
 
 
 def run_pygame_app(
-    board_size=64,
-    neighborhood=8,
-    max_iter=2500,
-    rand_rate=0.5,
-    toroidal=False,
-    topology=None,
-    frequency=8,
-    fps=DEFAULT_FPS,
-):
+    board_size: int = 64,
+    neighborhood: int = 8,
+    max_iter: int = 2500,
+    rand_rate: float = 0.5,
+    toroidal: bool = False,
+    topology: Topology | None = None,
+    frequency: int = 8,
+    fps: int = DEFAULT_FPS,
+) -> None:
     if topology is None:
         topology = Topology.from_toroidal(toroidal)
     app = PygameApp(

@@ -1,47 +1,49 @@
+from .types import Coord
+
 CORE_OFFSETS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 DIAG_OFFSETS = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
 
 
 class Rules:
 
-    def __init__(self, neighborhood, size, toroidal=False) -> None:
+    def __init__(self, neighborhood: int, size: int, toroidal: bool = False) -> None:
         self.neighborhood = neighborhood
         self.size = size
         self.toroidal = toroidal
 
     @property
-    def neighborhood(self):
+    def neighborhood(self) -> int:
         return self._neighborhood
 
-    @property
-    def size(self):
-        return self._size
-
-    @property
-    def toroidal(self):
-        return self._toroidal
-
     @neighborhood.setter
-    def neighborhood(self, value):
+    def neighborhood(self, value: int) -> None:
         if not (value == 4 or value == 8):
             raise ValueError("--- Neighborhood must be 4 or 8! ---")
         self._neighborhood = value
 
+    @property
+    def size(self) -> int:
+        return self._size
+
     @size.setter
-    def size(self, value):
+    def size(self, value: int) -> None:
         if not value > 2:
             raise ValueError("--- Size must be greater than 2! ---")
         self._size = value
 
+    @property
+    def toroidal(self) -> bool:
+        return self._toroidal
+
     @toroidal.setter
-    def toroidal(self, value):
+    def toroidal(self, value: bool) -> None:
         if not isinstance(value, bool):
             raise ValueError("--- Toroidal must be True or False! ---")
         self._toroidal = value
 
-    def neighbors(self, x, y):
+    def neighbors(self, x: int, y: int) -> set[Coord]:
         """Return neighbor coordinates. Does not mutate instance state."""
-        result = set()
+        result: set[Coord] = set()
         if not (0 <= x < self.size and 0 <= y < self.size):
             return result
         offsets = CORE_OFFSETS
