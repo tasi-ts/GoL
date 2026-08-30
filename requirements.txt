@@ -1,4 +1,4 @@
-# Runtime dependencies are declared in pyproject.toml.
+# Runtime dependencies are declared in pyproject.toml (numpy, pygame-ce).
 # Install the project (editable) with:
 #   pip install -e .
 -e .

@@ -1,39 +1,25 @@
 # Conway's Game of Life
 
-Active implementation is the `gol` package: a finite-grid simulator for [Conway's Game of Life](src/docs/conways-game-of-life.md) with a **real-time UI** powered by [pygame-ce](https://github.com/pygame-community/pygame-ce). The frozen reference copy lives in [`src/legacy/`](src/legacy/).
+Finite [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) (**B3/S23**) on three topologies: **bounded** grid, **toroidal** wrap, and a **geodesic sphere**. The live view is a [pygame-ce](https://github.com/pygame-community/pygame-ce) window (`import pygame`).
 
-## Project summary
+An earlier matplotlib slideshow lived in this repo before the pygame port; that tree is gone. Recover it from git history if you need it.
 
-The program models cells that are either **alive** (1) or **dead** (0). On each **generation**, cells update under classic B3/S23 rules (see [Conway's Game of Life](src/docs/conways-game-of-life.md)).
+## Screenshots
 
-1. Setup screen (paused): configure board size or sphere frequency, neighborhood, topology, max generations, and random rate.
-2. **Start** seeds the board; simulation stays paused until you resume.
-3. Advances in a pygame-ce window; stops on a repeating pattern (period 1–6) or max iterations.
-4. Side panel: setup controls before Start; stats and shortcuts during the run.
+Add window captures locally (PNG or GIF). They are not generated in CI:
 
-| Module | Role |
-|--------|------|
-| [`board.py`](gol/board.py) | `FlatBoard` grid state (alias `Board`); live-cell set, seeding |
-| [`geodesic_board.py`](gol/geodesic_board.py) | Sphere board on geodesic mesh |
-| [`geodesic_mesh.py`](gol/geodesic_mesh.py) | Icosahedral subdivision, adjacency, render polygons |
-| [`topology.py`](gol/topology.py) | `Topology` enum: Bounded / Toroidal / Sphere |
-| [`rules.py`](gol/rules.py) | 4- or 8-connected neighborhood; bounded or toroidal (flat only) |
-| [`game.py`](gol/game.py) | Conway logic, `step()`, `make_game()` factory |
-| [`ui/pygame_app.py`](gol/ui/pygame_app.py) | Real-time display, input, panel layout |
-| [`ui/sphere_renderer.py`](gol/ui/sphere_renderer.py) | 3D sphere view for geodesic mode |
+| View | Path |
+|------|------|
+| 2D grid (bounded / toroidal) | [`docs/images/grid.png`](docs/images/grid.png) |
+| Geodesic sphere | [`docs/images/sphere.png`](docs/images/sphere.png) |
 
-Dependencies are declared in [`pyproject.toml`](pyproject.toml) (`matplotlib`, `numpy`, `pygame-ce`). UI code uses `import pygame` (pygame-ce is a drop-in replacement).
+![2D Game of Life grid](docs/images/grid.png)
 
-## Documentation index
+![Geodesic sphere Game of Life](docs/images/sphere.png)
 
-- [Conway's Game of Life — rules](src/docs/conways-game-of-life.md)
-- [Board module](src/docs/board.md)
-- [Rules module](src/docs/rules.md)
-- [Geodesic sphere](src/docs/geodesic.md)
-- [Game module](src/docs/game.md)
-- [Pygame UI](src/docs/ui.md)
+## Install and run
 
-## Running (pygame-ce — default)
+Python **3.11+**. Runtime dependencies are **numpy** and **pygame-ce** ([`pyproject.toml`](pyproject.toml)).
 
 ```bash
 python -m venv .venv
@@ -42,9 +28,15 @@ pip install -e .
 gol                                # or: python -m gol
 ```
 
-Opens **paused** on a setup screen. Adjust **board size** (or **frequency** in Sphere mode), **neighborhood** (4/8, flat only), **topology** (Bounded / Toroidal / Sphere), **max generations**, and **random rate** with **+/-** buttons (or mouse), then click **Start** or press **Enter**. Those settings lock once the run begins. Default **FPS cap: 15**.
+Contributors (tests, Ruff, mypy, coverage):
 
-Default values: **64×64** board, **8-neighbor** neighborhood, **Bounded** topology, **50%** random fill, **2500** max generations. Sphere default frequency: **ν = 8** (642 cells).
+```bash
+pip install -e ".[dev]"
+```
+
+`gol` opens **paused** on a setup screen. Adjust **board size** (or **frequency** in Sphere mode), **neighborhood** (4/8, flat only), **topology**, **max generations**, and **random rate**, then **Start** or **Enter**. Settings lock once the run begins. Default FPS cap: **15**.
+
+Defaults: **64×64** board, **8-neighbor**, **bounded**, **50%** random fill, **2500** max generations. Sphere frequency **ν = 8** (642 cells).
 
 ### Controls (setup — before Start)
 
@@ -68,40 +60,83 @@ Default values: **64×64** board, **8-neighbor** neighborhood, **Bounded** topol
 | `[` / `]` (Sphere) | Zoom out / in |
 | Esc / Q | Quit |
 
-## Batch mode (console, no window)
+## Headless engine
 
 ```python
-from gol.board import Board
-from gol.game import GameOfLife
+from gol.board import FlatBoard
+from gol.game import GameOfLife, make_game
 from gol.rules import Rules
+from gol.topology import Topology
 
-game = GameOfLife(Board(64), Rules(8, 64), max_iter=100, rand_rate=0.5)
+game = GameOfLife(FlatBoard(64), Rules(8, 64), max_iter=100, rand_rate=0.5)
 game.run_simulation(verbose=True)
+
+sphere = make_game(Topology.SPHERE, frequency=8, max_iter=100, rand_rate=0.5)
+sphere.run_simulation(verbose=False)
 ```
 
-## Data flow
+## Architecture
+
+Boards are a **sparse live-cell set**, not a dense 0/1 array. Flat cells are `(row, column)`; sphere cells are geodesic mesh vertex ids. `GameOfLife` steps that set, snapshots live cells for undo and period detection, and the pygame loop draws a 2D grid or a 3D sphere.
 
 ```mermaid
 flowchart LR
-    subgraph core [Core]
-        B[Board]
-        R[Rules]
+    subgraph engine [Engine]
+        FB[FlatBoard live set]
+        GB[GeodesicBoard]
+        R[Rules.neighbors]
         G[GameOfLife]
     end
-    subgraph ui [UI loop]
+    subgraph ui [pygame loop]
         EV[events]
         ST[step]
-        DR[draw grid + panel]
+        DR[draw grid or sphere + panel]
     end
-    B --> G
-    R --> G
+    R --> FB
+    FB --> G
+    GB --> G
     G --> ST
     EV --> ST
     ST --> DR
 ```
 
+| Module | Role |
+|--------|------|
+| [`gol/board.py`](gol/board.py) | `FlatBoard` (alias `Board`); live-cell set, seeding |
+| [`gol/geodesic_board.py`](gol/geodesic_board.py) | Sphere board on the geodesic mesh |
+| [`gol/geodesic_mesh.py`](gol/geodesic_mesh.py) | Icosahedral subdivision, adjacency, render polygons |
+| [`gol/topology.py`](gol/topology.py) | `Topology`: Bounded / Toroidal / Sphere |
+| [`gol/rules.py`](gol/rules.py) | 4- or 8-connected neighbors; bounded or toroidal (flat only) |
+| [`gol/game.py`](gol/game.py) | B3/S23 step, period stop, `make_game()` |
+| [`gol/ui/pygame_app.py`](gol/ui/pygame_app.py) | Window, input, setup / running panels |
+| [`gol/ui/sphere_renderer.py`](gol/ui/sphere_renderer.py) | 3D sphere view |
+
 ## Design notes
 
-- **Finite grid** with **bounded** edges by default; optional **toroidal** wrap-around; optional **sphere** geodesic mesh (see [geodesic.md](src/docs/geodesic.md)).
-- **`sequence`** still stores pre-step boards for period detection; the UI does not replay the full history.
-- **Legacy** code under `src/legacy/` is unchanged (matplotlib slideshow).
+- **Sparse live set.** Occupied cells only; `area` is `len(live_cells)`. No `Board.array`.
+- **Period-6 stop.** After each step, the current live set is compared to the last six snapshots. Period 1–6 still-lifes and oscillators stop the run (or max generations).
+- **Geodesic dual cells.** Sphere mode is a class-I icosahedral mesh: 12 pentagons (degree 5) and the rest hexagons (degree 6). Conway B3/S23 uses mesh adjacency, not von Neumann / Moore offsets. Cell count is `10ν² + 2`.
+- **`sequence`** stores pre-step **live-cell snapshots** (not deepcopy'd boards) for scrubbing and period checks.
+
+## Testing
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs Ruff, mypy, and pytest with an engine coverage floor on Python 3.11 and 3.12.
+
+```bash
+pytest                             # all markers
+pytest -m unit
+pytest -m integration
+pytest -m e2e
+ruff check gol tests
+mypy gol
+```
+
+| Marker | What it covers |
+|--------|----------------|
+| `unit` | Isolated board, rules, mesh, game helpers |
+| `integration` | Engine loop across modules |
+| `e2e` | pygame UI with dummy SDL (`tests/conftest.py` sets `SDL_VIDEODRIVER=dummy`) |
+
+## License
+
+[MIT](LICENSE)

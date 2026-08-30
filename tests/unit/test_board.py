@@ -76,14 +76,6 @@ def test_same_seed_reproduces_live_cells():
     assert first.live_cells == second.live_cells
 
 
-def test_convert_to_binary_image_uses_live_cells():
-    board = _board(size=3)
-    board.set_alive((1, 2), True)
-    image = board.convert_to_binary_image()
-    assert image[1][2] == 255
-    assert image[0][0] == 0
-
-
 def test_neighbors_require_rules():
     board = FlatBoard(4)
     with pytest.raises(RuntimeError, match="requires Rules"):
