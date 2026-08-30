@@ -3,19 +3,23 @@ import math
 import numpy as np
 import pygame
 
+from .colors import COLOR_ACCENT, COLOR_ALIVE, COLOR_DEAD, COLOR_GRID_LINE
+
 
 class SphereRenderer:
     """Draw a GeodesicBoard as a depth-sorted 3D mesh in grid_rect."""
 
     def __init__(
         self,
-        color_alive=(0, 200, 120),
-        color_dead=(30, 30, 36),
-        color_edge=(42, 42, 50),
+        color_alive=COLOR_ALIVE,
+        color_dead=COLOR_DEAD,
+        color_edge=COLOR_GRID_LINE,
+        color_accent=COLOR_ACCENT,
     ):
         self.color_alive = color_alive
         self.color_dead = color_dead
         self.color_edge = color_edge
+        self.color_accent = color_accent
         self.yaw = 0.6
         self.pitch = 0.35
         self.zoom = 1.0
@@ -91,4 +95,4 @@ class SphereRenderer:
                 pygame.draw.polygon(surface, color, points)
                 pygame.draw.polygon(surface, self.color_edge, points, 1)
 
-        pygame.draw.rect(surface, (0, 200, 120), grid_rect, 2)
+        pygame.draw.rect(surface, self.color_accent, grid_rect, 2)
