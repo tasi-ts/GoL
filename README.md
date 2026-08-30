@@ -26,6 +26,8 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
 pip install -e .
 gol                                # or: python -m gol
+gol --pattern glider               # Started, paused; Space to run (flat boards only)
+gol --help
 ```
 
 Contributors (tests, Ruff, mypy, coverage):
@@ -34,7 +36,9 @@ Contributors (tests, Ruff, mypy, coverage):
 pip install -e ".[dev]"
 ```
 
-`gol` opens **paused** on a setup screen. Adjust **board size** (or **frequency** in Sphere mode), **neighborhood** (4/8, flat only), **topology**, **max generations**, and **random rate**, then **Start** or **Enter**. Settings lock once the run begins. Default FPS cap: **15**.
+`gol --pattern` names (`block`, `blinker`, `toad`, `glider`, `beehive`) seed a **flat** board, skip random fill, and open already **Started** (paused). `--topology sphere` with `--pattern` is an error.
+
+`gol` with no flags opens **paused** on a setup screen. Adjust **board size** (or **frequency** in Sphere mode), **neighborhood** (4/8, flat only), **topology**, **max generations**, and **random rate**, then **Start** or **Enter**. Settings lock once the run begins. Default FPS cap: **15**.
 
 Defaults: **64×64** board, **8-neighbor**, **bounded**, **50%** random fill, **2500** max generations. Sphere frequency **ν = 8** (642 cells).
 
@@ -108,6 +112,7 @@ flowchart LR
 | [`gol/topology.py`](gol/topology.py) | `Topology`: Bounded / Toroidal / Sphere |
 | [`gol/rules.py`](gol/rules.py) | 4- or 8-connected neighbors; bounded or toroidal (flat only) |
 | [`gol/game.py`](gol/game.py) | B3/S23 step, period stop, `make_game()` |
+| [`gol/patterns.py`](gol/patterns.py) | Named still lifes, oscillators, glider (`--pattern`) |
 | [`gol/ui/pygame_app.py`](gol/ui/pygame_app.py) | Window, input, setup / running panels |
 | [`gol/ui/sphere_renderer.py`](gol/ui/sphere_renderer.py) | 3D sphere view |
 

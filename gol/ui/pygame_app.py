@@ -56,12 +56,14 @@ class PygameApp(object):
         topology: Topology | None = None,
         frequency: int = 8,
         fps: int = DEFAULT_FPS,
+        seed: int | None = None,
     ) -> None:
         self.board_size = board_size
         self.frequency = frequency
         self.neighborhood = neighborhood
         self.max_iter = max_iter
         self.rand_rate = rand_rate
+        self.seed = seed
         if topology is not None:
             self.topology = topology
         else:
@@ -115,6 +117,7 @@ class PygameApp(object):
             neighborhood=self.neighborhood,
             max_iter=self.max_iter,
             rand_rate=self.rand_rate,
+            seed=self.seed,
         )
 
     def _init_display(self):
@@ -349,6 +352,7 @@ def run_pygame_app(
     topology: Topology | None = None,
     frequency: int = 8,
     fps: int = DEFAULT_FPS,
+    seed: int | None = None,
 ) -> None:
     if topology is None:
         topology = Topology.from_toroidal(toroidal)
@@ -360,5 +364,6 @@ def run_pygame_app(
         topology=topology,
         frequency=frequency,
         fps=fps,
+        seed=seed,
     )
     app.run()
