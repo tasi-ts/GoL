@@ -2,8 +2,6 @@ import copy
 from collections.abc import Iterable
 from typing import Protocol, runtime_checkable
 
-import matplotlib.pyplot as plt
-
 from .rules import Rules
 from .seeding import make_rng, target_live_count
 from .types import CellT, Coord
@@ -88,17 +86,6 @@ class FlatBoard:
                 print("{0}".format(1 if self.is_alive((i, j)) else 0), end=" ")
             print()
         print()
-
-    def convert_to_binary_image(self) -> list[list[int]]:
-        return [
-            [255 if self.is_alive((j, i)) else 0 for i in range(self.size)]
-            for j in range(self.size)
-        ]
-
-    def display_board(self) -> None:
-        img = self.convert_to_binary_image()
-        plt.imshow(img, cmap="gray")
-        plt.show()
 
     def add_object(self, coord_set: Iterable[Coord]) -> None:
         self.cells = self.cells.union(coord_set)
