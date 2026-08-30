@@ -26,4 +26,5 @@ class Topology(Enum):
 
     @classmethod
     def from_toroidal(cls, toroidal: bool) -> Self:
+        """Map the legacy ``toroidal=`` flag on ``PygameApp`` / ``run_pygame_app``."""
         return cls.TOROIDAL if toroidal else cls.BOUNDED

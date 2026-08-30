@@ -200,9 +200,6 @@ class PygameApp(object):
         self.status = "Configure settings, then Start"
         self.game = self._make_game()
 
-    def reset(self):
-        self.reset_to_setup()
-
     def _handle_config_click(self, pos):
         if not self._config_editable:
             return
