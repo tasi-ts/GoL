@@ -55,11 +55,3 @@ def test_cell_polygons_match_degree():
     mesh = GeodesicMesh(2)
     for cell_id, neighbors in enumerate(mesh.adjacency):
         assert len(mesh.cell_polygons[cell_id]) == len(neighbors)
-
-
-def test_cell_centers_copy_vertices():
-    mesh = GeodesicMesh(2)
-    assert mesh.cell_centers.shape == mesh.vertices.shape
-    assert (mesh.cell_centers == mesh.vertices).all()
-    mesh.cell_centers[0, 0] = 0.0
-    assert mesh.vertices[0, 0] != 0.0

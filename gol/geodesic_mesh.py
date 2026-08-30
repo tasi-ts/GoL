@@ -80,7 +80,6 @@ class GeodesicMesh:
         self.cell_count = len(self.vertices)
         self.adjacency = self._build_adjacency()
         self.cell_polygons = self._build_cell_polygons()
-        self.cell_centers = self.vertices.copy()
 
     @staticmethod
     def expected_cell_count(frequency: int) -> int:
